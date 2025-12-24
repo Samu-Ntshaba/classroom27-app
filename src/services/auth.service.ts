@@ -103,17 +103,6 @@ export const authService = {
     return user;
   },
 
-  async updateMe(payload: { name?: string }) {
-    const response = await api.patch('/auth/me', payload);
-    const user = extractUser(response.data);
-
-    if (!user) {
-      throw new Error('Invalid updateMe response');
-    }
-
-    authStore.setState({ user });
-    return user;
-  },
 
   async changePassword(payload: { currentPassword: string; newPassword: string }) {
     const response = await api.post('/auth/change-password', payload);
