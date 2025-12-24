@@ -1,11 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Switch, View } from 'react-native';
-import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Controller, useForm } from 'react-hook-form';
 import { Alert, ScrollView, StyleSheet, Switch, View } from 'react-native';
+
+import { Controller, useForm } from 'react-hook-form';
+
 
 import { Screen } from '../components/layout/Screen';
 import { ProfileHeader } from '../components/profile/ProfileHeader';
@@ -16,6 +15,7 @@ import { Input } from '../components/ui/Input';
 import { SkeletonBlock } from '../components/ui/Skeleton';
 import { Text } from '../components/ui/Text';
 
+import { zodResolver } from '@hookform/resolvers/zod';
 import { authService } from '../services/auth.service';
 import { notificationService, NotificationSettings } from '../services/notification.service';
 import { userService } from '../services/user.service';
