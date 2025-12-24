@@ -23,7 +23,7 @@ const extractUser = (data: any): UserProfile | null => {
 
 export const authService = {
   async login(payload: { email: string; password: string }) {
-    const response = await api.post('/login', payload);
+    const response = await api.post('/auth/login', payload);
     const tokens = extractTokens(response.data);
     if (tokens) {
       await storage.setTokens(tokens.accessToken, tokens.refreshToken);
@@ -34,13 +34,13 @@ export const authService = {
     return me;
   },
   async register(payload: { name: string; email: string; password: string }) {
-    const response = await api.post('/register', payload);
+    const response = await api.post('/auth/register', payload);
     return extractUser(response.data);
   },
   async logout() {
     const { refreshToken } = authStore.getState();
     try {
-      await api.post('/logout', refreshToken ? { refreshToken } : undefined);
+      await api.post('/auth/logout', refreshToken ? { refreshToken } : undefined);
     } catch {
       // ignore
     }
@@ -48,45 +48,45 @@ export const authService = {
     await storage.clearTokens();
   },
   async getMe() {
-    const response = await api.get('/me');
+    const response = await api.get('/auth/me');
     return extractUser(response.data);
   },
   async updateMe(payload: { name?: string }) {
-    const response = await api.patch('/me', payload);
+    const response = await api.patch('/auth/me', payload);
     const user = extractUser(response.data);
     authStore.setState({ user });
     return user;
   },
   async changePassword(payload: { currentPassword: string; newPassword: string }) {
-    const response = await api.post('/change-password', payload);
+    const response = await api.post('/auth/change-password', payload);
     return response.data;
   },
   async requestVerification(payload: { email: string }) {
-    const response = await api.post('/request-verification', payload);
+    const response = await api.post('/auth/request-verification', payload);
     return response.data;
   },
   async verifyEmail(payload: { token: string }) {
-    const response = await api.post('/verify-email', payload);
+    const response = await api.post('/auth/verify-email', payload);
     return response.data;
   },
   async verifyEmailByQuery(token: string) {
-    const response = await api.get('/verify-email', { params: { token } });
+    const response = await api.get('/auth/verify-email', { params: { token } });
     return response.data;
   },
   async requestPasswordReset(payload: { email: string }) {
     try {
-      const response = await api.post('/request-password-reset', payload);
+      const response = await api.post('/auth/request-password-reset', payload);
       return response.data;
     } catch (error: any) {
       if (error?.response?.status === 404) {
-        const response = await api.post('/forgot-password', payload);
+        const response = await api.post('/auth/forgot-password', payload);
         return response.data;
       }
       throw error;
     }
   },
   async resetPassword(payload: { token: string; password: string }) {
-    const response = await api.post('/reset-password', payload);
+    const response = await api.post('/auth/reset-password', payload);
     return response.data;
   },
 };
