@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -14,20 +13,9 @@ import { Input } from '../components/ui/Input';
 import { SkeletonBlock } from '../components/ui/Skeleton';
 import { Text } from '../components/ui/Text';
 import { authService } from '../services/auth.service';
-import { notificationService } from '../services/notification.service';
+import { notificationService, NotificationSettings } from '../services/notification.service';
 import { userService } from '../services/user.service';
 import { useAuthStore } from '../store/auth.store';
-=======
-import { useRouter } from 'expo-router';
-import React from 'react';
-import { StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-
-import { Button } from '../components/ui/Button';
-import { Logo } from '../components/ui/Logo';
-import { ProfileScreen } from '../features/auth/ProfileScreen';
-
->>>>>>> a89988e (jgfjjf)
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { getApiErrorMessage } from '../utils/error';
@@ -41,9 +29,10 @@ export default function ProfileRoute() {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
-  const [settings, setSettings] = useState({ pushEnabled: false, emailEnabled: false });
+  const [settings, setSettings] = useState<NotificationSettings>({});
   const [savingSettings, setSavingSettings] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'notifications'>('profile');
 
   const profileForm = useForm<UpdateProfileValues>({
     resolver: zodResolver(updateProfileSchema),
@@ -78,12 +67,9 @@ export default function ProfileRoute() {
     if (!accessToken) return;
     try {
       const response = await notificationService.getSettings();
-      setSettings({
-        pushEnabled: Boolean(response.pushEnabled ?? response.push),
-        emailEnabled: Boolean(response.emailEnabled ?? response.email),
-      });
+      setSettings(response);
     } catch {
-      setSettings({ pushEnabled: false, emailEnabled: false });
+      setSettings({});
     }
   }, [accessToken]);
 
@@ -154,19 +140,12 @@ export default function ProfileRoute() {
     }
   };
 
-  const toggleSetting = async (key: 'pushEnabled' | 'emailEnabled', value: boolean) => {
+  const toggleSetting = async (key: keyof NotificationSettings, value: boolean) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
     setSavingSettings(true);
     try {
       const response = await notificationService.updateSettings({ [key]: value });
-      setSettings((prev) => ({
-        pushEnabled: Boolean(
-          response.pushEnabled ?? response.push ?? (key === 'pushEnabled' ? value : prev.pushEnabled)
-        ),
-        emailEnabled: Boolean(
-          response.emailEnabled ?? response.email ?? (key === 'emailEnabled' ? value : prev.emailEnabled)
-        ),
-      }));
+      setSettings((prev) => ({ ...prev, ...response }));
     } catch {
       setSettings((prev) => ({ ...prev, [key]: !value }));
     } finally {
@@ -194,148 +173,262 @@ export default function ProfileRoute() {
         avatarUrl={profile?.avatarUrl ?? user?.avatarUrl}
         followers={profile?.followersCount ?? 0}
         following={profile?.followingCount ?? 0}
+        onPressAvatar={handleAvatarUpload}
       />
     );
-  }, [loading, profile, user]);
+  }, [handleAvatarUpload, loading, profile, user]);
 
   return (
-<<<<<<< HEAD
     <Screen>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.headerRow}>
           <Text variant="h2" weight="700">
             Profile
           </Text>
-          <Button title="Back" variant="secondary" onPress={() => router.back()} />
+          <Button title="Back" variant="secondary" onPress={() => router.back()} style={styles.smallButton} />
         </View>
         {headerContent}
         <View style={styles.headerActions}>
-          <Button title="Upload avatar" variant="secondary" onPress={handleAvatarUpload} />
+          <Button title="Upload avatar" variant="secondary" onPress={handleAvatarUpload} style={styles.smallButton} />
         </View>
-        <Divider />
-        <Text variant="h3" weight="700" style={styles.sectionTitle}>
-          Edit profile
-        </Text>
-        <Controller
-          control={profileForm.control}
-          name="name"
-          render={({ field: { onChange, value } }) => (
-            <Input label="Name" value={value} onChangeText={onChange} error={profileForm.formState.errors.name?.message} />
-          )}
-        />
-        <Button title="Save profile" onPress={profileForm.handleSubmit(updateProfile)} />
-        <Divider />
-        <SuggestedUsersRail />
-        <Divider />
-        <Text variant="h3" weight="700" style={styles.sectionTitle}>
-          Change password
-        </Text>
-        <Controller
-          control={passwordForm.control}
-          name="currentPassword"
-          render={({ field: { onChange, value } }) => (
-            <Input
-              label="Current password"
-              secureTextEntry
-              value={value}
-              onChangeText={onChange}
-              error={passwordForm.formState.errors.currentPassword?.message}
-            />
-          )}
-        />
-        <Controller
-          control={passwordForm.control}
-          name="newPassword"
-          render={({ field: { onChange, value } }) => (
-            <Input
-              label="New password"
-              secureTextEntry
-              value={value}
-              onChangeText={onChange}
-              error={passwordForm.formState.errors.newPassword?.message}
-            />
-          )}
-        />
-        <Controller
-          control={passwordForm.control}
-          name="confirmPassword"
-          render={({ field: { onChange, value } }) => (
-            <Input
-              label="Confirm new password"
-              secureTextEntry
-              value={value}
-              onChangeText={onChange}
-              error={passwordForm.formState.errors.confirmPassword?.message}
-            />
-          )}
-        />
-        <Button title="Update password" onPress={passwordForm.handleSubmit(changePassword)} />
-        <Divider />
-        <Text variant="h3" weight="700" style={styles.sectionTitle}>
-          Notification settings
-        </Text>
-        <View style={styles.settingRow}>
-          <View>
-            <Text weight="600">Push notifications</Text>
-            <Text variant="small" color={colors.mutedText}>
-              Get notified about new followers and mentions.
-            </Text>
-          </View>
-          <Switch
-            value={settings.pushEnabled}
-            onValueChange={(value) => toggleSetting('pushEnabled', value)}
-            thumbColor={colors.card}
-            trackColor={{ false: colors.border, true: colors.primary }}
-            disabled={savingSettings}
+        <View style={styles.tabBar}>
+          <Button
+            title="Profile"
+            variant={activeTab === 'profile' ? 'primary' : 'secondary'}
+            onPress={() => setActiveTab('profile')}
+            style={styles.tabButton}
+          />
+          <Button
+            title="Password"
+            variant={activeTab === 'password' ? 'primary' : 'secondary'}
+            onPress={() => setActiveTab('password')}
+            style={styles.tabButton}
+          />
+          <Button
+            title="Notifications"
+            variant={activeTab === 'notifications' ? 'primary' : 'secondary'}
+            onPress={() => setActiveTab('notifications')}
+            style={styles.tabButton}
           />
         </View>
-        <View style={styles.settingRow}>
-          <View>
-            <Text weight="600">Email updates</Text>
-            <Text variant="small" color={colors.mutedText}>
-              Receive weekly highlights in your inbox.
+        {activeTab === 'profile' ? (
+          <>
+            <Divider />
+            <Text variant="h3" weight="700" style={styles.sectionTitle}>
+              Edit profile
             </Text>
-          </View>
-          <Switch
-            value={settings.emailEnabled}
-            onValueChange={(value) => toggleSetting('emailEnabled', value)}
-            thumbColor={colors.card}
-            trackColor={{ false: colors.border, true: colors.primary }}
-            disabled={savingSettings}
-          />
-        </View>
-        {statusMessage ? (
-          <Text variant="small" color={colors.success} style={styles.status}>
-            {statusMessage}
-          </Text>
+            <Controller
+              control={profileForm.control}
+              name="name"
+              render={({ field: { onChange, value } }) => (
+                <Input
+                  label="Name"
+                  value={value}
+                  onChangeText={onChange}
+                  error={profileForm.formState.errors.name?.message}
+                />
+              )}
+            />
+            <Button
+              title="Save profile"
+              onPress={profileForm.handleSubmit(updateProfile)}
+              style={styles.primaryButton}
+            />
+            <Divider />
+            <SuggestedUsersRail />
+            {statusMessage ? (
+              <Text variant="small" color={colors.success} style={styles.status}>
+                {statusMessage}
+              </Text>
+            ) : null}
+            {error ? (
+              <Text variant="small" color={colors.danger} style={styles.status}>
+                {error}
+              </Text>
+            ) : null}
+            <View style={styles.logout}>
+              <Button title="Logout" variant="secondary" onPress={() => authService.logout()} style={styles.smallButton} />
+            </View>
+          </>
         ) : null}
-        {error ? (
-          <Text variant="small" color={colors.danger} style={styles.status}>
-            {error}
-          </Text>
+        {activeTab === 'password' ? (
+          <>
+            <Divider />
+            <Text variant="h3" weight="700" style={styles.sectionTitle}>
+              Change password
+            </Text>
+            <Controller
+              control={passwordForm.control}
+              name="currentPassword"
+              render={({ field: { onChange, value } }) => (
+                <Input
+                  label="Current password"
+                  secureTextEntry
+                  value={value}
+                  onChangeText={onChange}
+                  error={passwordForm.formState.errors.currentPassword?.message}
+                />
+              )}
+            />
+            <Controller
+              control={passwordForm.control}
+              name="newPassword"
+              render={({ field: { onChange, value } }) => (
+                <Input
+                  label="New password"
+                  secureTextEntry
+                  value={value}
+                  onChangeText={onChange}
+                  error={passwordForm.formState.errors.newPassword?.message}
+                />
+              )}
+            />
+            <Controller
+              control={passwordForm.control}
+              name="confirmPassword"
+              render={({ field: { onChange, value } }) => (
+                <Input
+                  label="Confirm new password"
+                  secureTextEntry
+                  value={value}
+                  onChangeText={onChange}
+                  error={passwordForm.formState.errors.confirmPassword?.message}
+                />
+              )}
+            />
+            <Button
+              title="Update password"
+              onPress={passwordForm.handleSubmit(changePassword)}
+              style={styles.primaryButton}
+            />
+            {statusMessage ? (
+              <Text variant="small" color={colors.success} style={styles.status}>
+                {statusMessage}
+              </Text>
+            ) : null}
+            {error ? (
+              <Text variant="small" color={colors.danger} style={styles.status}>
+                {error}
+              </Text>
+            ) : null}
+          </>
         ) : null}
-        <View style={styles.logout}>
-          <Button title="Logout" variant="secondary" onPress={() => authService.logout()} />
-        </View>
+        {activeTab === 'notifications' ? (
+          <>
+            <Divider />
+            <Text variant="h3" weight="700" style={styles.sectionTitle}>
+              Notification settings
+            </Text>
+            <View style={styles.settingRow}>
+              <View style={styles.settingInfo}>
+                <Text weight="600">Email on follow</Text>
+                <Text variant="small" color={colors.mutedText}>
+                  Receive an email when someone follows you.
+                </Text>
+              </View>
+              <Switch
+                value={Boolean(settings.emailOnFollow)}
+                onValueChange={(value) => toggleSetting('emailOnFollow', value)}
+                thumbColor={colors.card}
+                trackColor={{ false: colors.border, true: colors.primary }}
+                disabled={savingSettings}
+                style={styles.switch}
+              />
+            </View>
+            <View style={styles.settingRow}>
+              <View style={styles.settingInfo}>
+                <Text weight="600">Email on chat request</Text>
+                <Text variant="small" color={colors.mutedText}>
+                  Get notified when someone requests a chat.
+                </Text>
+              </View>
+              <Switch
+                value={Boolean(settings.emailOnChatRequest)}
+                onValueChange={(value) => toggleSetting('emailOnChatRequest', value)}
+                thumbColor={colors.card}
+                trackColor={{ false: colors.border, true: colors.primary }}
+                disabled={savingSettings}
+                style={styles.switch}
+              />
+            </View>
+            <View style={styles.settingRow}>
+              <View style={styles.settingInfo}>
+                <Text weight="600">Email on chat request accepted</Text>
+                <Text variant="small" color={colors.mutedText}>
+                  Receive updates when a chat request is accepted.
+                </Text>
+              </View>
+              <Switch
+                value={Boolean(settings.emailOnChatRequestAccepted)}
+                onValueChange={(value) => toggleSetting('emailOnChatRequestAccepted', value)}
+                thumbColor={colors.card}
+                trackColor={{ false: colors.border, true: colors.primary }}
+                disabled={savingSettings}
+                style={styles.switch}
+              />
+            </View>
+            <View style={styles.settingRow}>
+              <View style={styles.settingInfo}>
+                <Text weight="600">Email on likes</Text>
+                <Text variant="small" color={colors.mutedText}>
+                  Receive emails when someone likes your content.
+                </Text>
+              </View>
+              <Switch
+                value={Boolean(settings.emailOnLike)}
+                onValueChange={(value) => toggleSetting('emailOnLike', value)}
+                thumbColor={colors.card}
+                trackColor={{ false: colors.border, true: colors.primary }}
+                disabled={savingSettings}
+                style={styles.switch}
+              />
+            </View>
+            <View style={styles.settingRow}>
+              <View style={styles.settingInfo}>
+                <Text weight="600">Email on comments</Text>
+                <Text variant="small" color={colors.mutedText}>
+                  Receive emails when someone comments on your content.
+                </Text>
+              </View>
+              <Switch
+                value={Boolean(settings.emailOnComment)}
+                onValueChange={(value) => toggleSetting('emailOnComment', value)}
+                thumbColor={colors.card}
+                trackColor={{ false: colors.border, true: colors.primary }}
+                disabled={savingSettings}
+                style={styles.switch}
+              />
+            </View>
+            <View style={styles.settingRow}>
+              <View style={styles.settingInfo}>
+                <Text weight="600">Email on messages</Text>
+                <Text variant="small" color={colors.mutedText}>
+                  Receive emails for new messages.
+                </Text>
+              </View>
+              <Switch
+                value={Boolean(settings.emailOnMessage)}
+                onValueChange={(value) => toggleSetting('emailOnMessage', value)}
+                thumbColor={colors.card}
+                trackColor={{ false: colors.border, true: colors.primary }}
+                disabled={savingSettings}
+                style={styles.switch}
+              />
+            </View>
+            {statusMessage ? (
+              <Text variant="small" color={colors.success} style={styles.status}>
+                {statusMessage}
+              </Text>
+            ) : null}
+            {error ? (
+              <Text variant="small" color={colors.danger} style={styles.status}>
+                {error}
+              </Text>
+            ) : null}
+          </>
+        ) : null}
       </ScrollView>
     </Screen>
-=======
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        {/* Keep wordmark smaller in headers */}
-        <Logo width={140} />
-        <Button
-          title="Back"
-          variant="secondary"
-          onPress={() => router.back()}
-        />
-      </View>
-
-      <View style={styles.content}>
-        <ProfileScreen />
-      </View>
-    </SafeAreaView>
->>>>>>> a89988e (jgfjjf)
   );
 }
 
@@ -350,6 +443,15 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     marginBottom: spacing.lg,
   },
+  tabBar: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    flexWrap: 'wrap',
+  },
+  tabButton: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+  },
   sectionTitle: {
     marginBottom: spacing.sm,
   },
@@ -358,7 +460,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: spacing.sm,
-    gap: spacing.lg,
+    gap: spacing.md,
+  },
+  settingInfo: {
+    flex: 1,
+    paddingRight: spacing.md,
+  },
+  switch: {
+    transform: [{ scaleX: 0.9 }, { scaleY: 0.9 }],
   },
   status: {
     marginTop: spacing.sm,
@@ -366,6 +475,14 @@ const styles = StyleSheet.create({
   logout: {
     marginTop: spacing.xl,
     marginBottom: spacing.xxl,
+  },
+  smallButton: {
+    alignSelf: 'flex-start',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+  },
+  primaryButton: {
+    alignSelf: 'flex-start',
   },
   loadingHeader: {
     flexDirection: 'row',
