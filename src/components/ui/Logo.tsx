@@ -71,4 +71,4 @@ interface LogoProps {
   height?: number;
 }
 
-export const Logo = ({ width = 200, height = 44 }: LogoProps) => <SvgXml xml={logoSvg} width={width} height={height} />;
+export const Logo = ({ width = 220, height = 48 }: LogoProps) => <SvgXml xml={logoSvg} width={width} height={height} />;

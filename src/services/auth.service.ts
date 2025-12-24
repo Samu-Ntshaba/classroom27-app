@@ -1,5 +1,6 @@
 import { authStore, UserProfile } from '../store/auth.store';
 import { api } from './api';
+import { userService } from './user.service';
 import { storage } from './storage.service';
 
 export interface AuthTokens {
@@ -52,8 +53,13 @@ export const authService = {
       refreshToken: tokens.refreshToken,
     });
 
-    const meRes = await api.get('/auth/me');
-    const me = extractUser(meRes.data);
+    let me = null;
+    try {
+      me = await userService.getMe();
+    } catch {
+      const meRes = await api.get('/auth/me');
+      me = extractUser(meRes.data);
+    }
 
     if (!me) {
       throw new Error('Could not load user profile from /me');

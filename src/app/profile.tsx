@@ -1,5 +1,3 @@
-import * as ImagePicker from 'expo-image-picker';
-import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Switch, View } from 'react-native';
 
@@ -43,23 +41,6 @@ export default function ProfileRoute() {
   const [savingSettings, setSavingSettings] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'notifications'>('profile');
-
-  // Helper: safe merge into store user (Zustand setUser expects an object, not a function)
-  const mergeUser = useCallback(
-    (incoming: any) => {
-      if (!incoming) return;
-
-      // grab latest, not the closure
-      const current = useAuthStore.getState().user;
-
-      if (current) {
-        setUser({ ...current, ...incoming });
-      } else {
-        setUser(incoming);
-      }
-    },
-    [setUser]
-  );
 
   const profileForm = useForm<UpdateProfileValues>({
     resolver: zodResolver(updateProfileSchema),

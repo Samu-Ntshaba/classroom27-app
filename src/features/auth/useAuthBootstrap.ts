@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { authService } from '../../services/auth.service';
 import { storage } from '../../services/storage.service';
+import { userService } from '../../services/user.service';
 import { useAuthStore } from '../../store/auth.store';
 
 export const useAuthBootstrap = () => {
@@ -18,12 +19,19 @@ export const useAuthBootstrap = () => {
           setTokens(tokens.accessToken, tokens.refreshToken);
         }
         try {
-          const user = await authService.getMe();
+          const user = await userService.getMe();
           if (active) {
             setUser(user);
           }
         } catch {
-          // ignore
+          try {
+            const user = await authService.getMe();
+            if (active) {
+              setUser(user);
+            }
+          } catch {
+            // ignore
+          }
         }
       }
       if (active) {
