@@ -7,4 +7,9 @@ const logoSvg = `<?xml version="1.0" encoding="UTF-8"?>
   <text x="44" y="21" font-family="Arial" font-size="18" font-weight="700" fill="#0F162A">Classroom 27</text>
 </svg>`;
 
-export const Logo = () => <SvgXml xml={logoSvg} width={160} height={32} />;
+interface LogoProps {
+  width?: number;
+  height?: number;
+}
+
+export const Logo = ({ width = 160, height = 32 }: LogoProps) => <SvgXml xml={logoSvg} width={width} height={height} />;

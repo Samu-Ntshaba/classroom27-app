@@ -34,7 +34,7 @@ const refreshTokens = async () => {
       }
 
       try {
-        const response = await refreshClient.post('/refresh', { refreshToken: stored });
+        const response = await refreshClient.post('/auth/refresh', { refreshToken: stored });
         const access = response.data?.accessToken ?? response.data?.access_token;
         const refresh = response.data?.refreshToken ?? response.data?.refresh_token ?? stored;
         if (access && refresh) {
