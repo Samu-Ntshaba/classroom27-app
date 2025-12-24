@@ -35,14 +35,6 @@ const logoSvg = `
     </text>
   </g>
 
-<<<<<<< HEAD
-interface LogoProps {
-  width?: number;
-  height?: number;
-}
-
-export const Logo = ({ width = 160, height = 32 }: LogoProps) => <SvgXml xml={logoSvg} width={width} height={height} />;
-=======
   <!-- WORDMARK -->
   <g transform="translate(76,0)">
     <text
@@ -74,15 +66,9 @@ export const Logo = ({ width = 160, height = 32 }: LogoProps) => <SvgXml xml={lo
 </svg>
 `;
 
-type LogoProps = {
+interface LogoProps {
   width?: number;
   height?: number;
-};
+}
 
-export const Logo: React.FC<LogoProps> = ({
-  width = 160,
-  height = 34,
-}) => {
-  return <SvgXml xml={logoSvg} width={width} height={height} />;
-};
->>>>>>> a89988e (jgfjjf)
+export const Logo = ({ width = 160, height = 34 }: LogoProps) => <SvgXml xml={logoSvg} width={width} height={height} />;

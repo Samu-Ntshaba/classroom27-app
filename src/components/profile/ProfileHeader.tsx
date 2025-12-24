@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { Avatar } from '../ui/Avatar';
 import { Text } from '../ui/Text';
 import { colors } from '../../theme/colors';
@@ -11,6 +11,7 @@ interface ProfileHeaderProps {
   avatarUrl?: string | null;
   followers?: number;
   following?: number;
+  onPressAvatar?: () => void;
 }
 
 export const ProfileHeader = ({
@@ -19,10 +20,13 @@ export const ProfileHeader = ({
   avatarUrl,
   followers = 0,
   following = 0,
+  onPressAvatar,
 }: ProfileHeaderProps) => {
   return (
     <View style={styles.container}>
-      <Avatar size={72} uri={avatarUrl ?? undefined} name={name ?? undefined} />
+      <Pressable onPress={onPressAvatar} disabled={!onPressAvatar}>
+        <Avatar size={72} uri={avatarUrl ?? undefined} name={name ?? undefined} />
+      </Pressable>
       <View style={styles.info}>
         <Text variant="h2" weight="700">
           {name ?? 'Classroom Learner'}

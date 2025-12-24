@@ -36,10 +36,6 @@ const extractUser = (data: any): UserProfile | null => {
 export const authService = {
   async login(payload: { email: string; password: string }) {
     const response = await api.post('/auth/login', payload);
-<<<<<<< HEAD
-=======
-
->>>>>>> a89988e (jgfjjf)
     const tokens = extractTokens(response.data);
 
     // ✅ HARD FAIL if no tokens (prevents /me call without Authorization header)
@@ -69,27 +65,18 @@ export const authService = {
 
   async register(payload: { name: string; email: string; password: string }) {
     const response = await api.post('/auth/register', payload);
-<<<<<<< HEAD
-    return extractUser(response.data);
-=======
-
     // Register may return {user} or message only
     const user = extractUser(response.data);
 
     return user; // can be null if backend returns only a message; UI should handle that
->>>>>>> a89988e (jgfjjf)
   },
 
   async logout() {
     const { refreshToken } = authStore.getState();
 
     try {
-<<<<<<< HEAD
-      await api.post('/auth/logout', refreshToken ? { refreshToken } : undefined);
-=======
       // ✅ always send an object (avoid undefined body edge cases)
       await api.post('/auth/logout', refreshToken ? { refreshToken } : {});
->>>>>>> a89988e (jgfjjf)
     } catch {
       // ignore server errors
     } finally {
@@ -101,13 +88,6 @@ export const authService = {
 
   async getMe() {
     const response = await api.get('/auth/me');
-<<<<<<< HEAD
-    return extractUser(response.data);
-  },
-  async updateMe(payload: { name?: string }) {
-    const response = await api.patch('/auth/me', payload);
-=======
->>>>>>> a89988e (jgfjjf)
     const user = extractUser(response.data);
 
     if (!user) {

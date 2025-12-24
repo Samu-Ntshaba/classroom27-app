@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -14,20 +13,9 @@ import { Input } from '../components/ui/Input';
 import { SkeletonBlock } from '../components/ui/Skeleton';
 import { Text } from '../components/ui/Text';
 import { authService } from '../services/auth.service';
-import { notificationService } from '../services/notification.service';
+import { notificationService, NotificationSettings } from '../services/notification.service';
 import { userService } from '../services/user.service';
 import { useAuthStore } from '../store/auth.store';
-=======
-import { useRouter } from 'expo-router';
-import React from 'react';
-import { StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-
-import { Button } from '../components/ui/Button';
-import { Logo } from '../components/ui/Logo';
-import { ProfileScreen } from '../features/auth/ProfileScreen';
-
->>>>>>> a89988e (jgfjjf)
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { getApiErrorMessage } from '../utils/error';
@@ -41,7 +29,7 @@ export default function ProfileRoute() {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
-  const [settings, setSettings] = useState({ pushEnabled: false, emailEnabled: false });
+  const [settings, setSettings] = useState<NotificationSettings>({});
   const [savingSettings, setSavingSettings] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
@@ -78,12 +66,9 @@ export default function ProfileRoute() {
     if (!accessToken) return;
     try {
       const response = await notificationService.getSettings();
-      setSettings({
-        pushEnabled: Boolean(response.pushEnabled ?? response.push),
-        emailEnabled: Boolean(response.emailEnabled ?? response.email),
-      });
+      setSettings(response);
     } catch {
-      setSettings({ pushEnabled: false, emailEnabled: false });
+      setSettings({});
     }
   }, [accessToken]);
 
@@ -154,19 +139,12 @@ export default function ProfileRoute() {
     }
   };
 
-  const toggleSetting = async (key: 'pushEnabled' | 'emailEnabled', value: boolean) => {
+  const toggleSetting = async (key: keyof NotificationSettings, value: boolean) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
     setSavingSettings(true);
     try {
       const response = await notificationService.updateSettings({ [key]: value });
-      setSettings((prev) => ({
-        pushEnabled: Boolean(
-          response.pushEnabled ?? response.push ?? (key === 'pushEnabled' ? value : prev.pushEnabled)
-        ),
-        emailEnabled: Boolean(
-          response.emailEnabled ?? response.email ?? (key === 'emailEnabled' ? value : prev.emailEnabled)
-        ),
-      }));
+      setSettings((prev) => ({ ...prev, ...response }));
     } catch {
       setSettings((prev) => ({ ...prev, [key]: !value }));
     } finally {
@@ -194,12 +172,12 @@ export default function ProfileRoute() {
         avatarUrl={profile?.avatarUrl ?? user?.avatarUrl}
         followers={profile?.followersCount ?? 0}
         following={profile?.followingCount ?? 0}
+        onPressAvatar={handleAvatarUpload}
       />
     );
-  }, [loading, profile, user]);
+  }, [handleAvatarUpload, loading, profile, user]);
 
   return (
-<<<<<<< HEAD
     <Screen>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.headerRow}>
@@ -276,14 +254,14 @@ export default function ProfileRoute() {
         </Text>
         <View style={styles.settingRow}>
           <View>
-            <Text weight="600">Push notifications</Text>
+            <Text weight="600">Email on follow</Text>
             <Text variant="small" color={colors.mutedText}>
-              Get notified about new followers and mentions.
+              Receive an email when someone follows you.
             </Text>
           </View>
           <Switch
-            value={settings.pushEnabled}
-            onValueChange={(value) => toggleSetting('pushEnabled', value)}
+            value={Boolean(settings.emailOnFollow)}
+            onValueChange={(value) => toggleSetting('emailOnFollow', value)}
             thumbColor={colors.card}
             trackColor={{ false: colors.border, true: colors.primary }}
             disabled={savingSettings}
@@ -291,14 +269,74 @@ export default function ProfileRoute() {
         </View>
         <View style={styles.settingRow}>
           <View>
-            <Text weight="600">Email updates</Text>
+            <Text weight="600">Email on chat request</Text>
             <Text variant="small" color={colors.mutedText}>
-              Receive weekly highlights in your inbox.
+              Get notified when someone requests a chat.
             </Text>
           </View>
           <Switch
-            value={settings.emailEnabled}
-            onValueChange={(value) => toggleSetting('emailEnabled', value)}
+            value={Boolean(settings.emailOnChatRequest)}
+            onValueChange={(value) => toggleSetting('emailOnChatRequest', value)}
+            thumbColor={colors.card}
+            trackColor={{ false: colors.border, true: colors.primary }}
+            disabled={savingSettings}
+          />
+        </View>
+        <View style={styles.settingRow}>
+          <View>
+            <Text weight="600">Email on chat request accepted</Text>
+            <Text variant="small" color={colors.mutedText}>
+              Receive updates when a chat request is accepted.
+            </Text>
+          </View>
+          <Switch
+            value={Boolean(settings.emailOnChatRequestAccepted)}
+            onValueChange={(value) => toggleSetting('emailOnChatRequestAccepted', value)}
+            thumbColor={colors.card}
+            trackColor={{ false: colors.border, true: colors.primary }}
+            disabled={savingSettings}
+          />
+        </View>
+        <View style={styles.settingRow}>
+          <View>
+            <Text weight="600">Email on likes</Text>
+            <Text variant="small" color={colors.mutedText}>
+              Receive emails when someone likes your content.
+            </Text>
+          </View>
+          <Switch
+            value={Boolean(settings.emailOnLike)}
+            onValueChange={(value) => toggleSetting('emailOnLike', value)}
+            thumbColor={colors.card}
+            trackColor={{ false: colors.border, true: colors.primary }}
+            disabled={savingSettings}
+          />
+        </View>
+        <View style={styles.settingRow}>
+          <View>
+            <Text weight="600">Email on comments</Text>
+            <Text variant="small" color={colors.mutedText}>
+              Receive emails when someone comments on your content.
+            </Text>
+          </View>
+          <Switch
+            value={Boolean(settings.emailOnComment)}
+            onValueChange={(value) => toggleSetting('emailOnComment', value)}
+            thumbColor={colors.card}
+            trackColor={{ false: colors.border, true: colors.primary }}
+            disabled={savingSettings}
+          />
+        </View>
+        <View style={styles.settingRow}>
+          <View>
+            <Text weight="600">Email on messages</Text>
+            <Text variant="small" color={colors.mutedText}>
+              Receive emails for new messages.
+            </Text>
+          </View>
+          <Switch
+            value={Boolean(settings.emailOnMessage)}
+            onValueChange={(value) => toggleSetting('emailOnMessage', value)}
             thumbColor={colors.card}
             trackColor={{ false: colors.border, true: colors.primary }}
             disabled={savingSettings}
@@ -319,23 +357,6 @@ export default function ProfileRoute() {
         </View>
       </ScrollView>
     </Screen>
-=======
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        {/* Keep wordmark smaller in headers */}
-        <Logo width={140} />
-        <Button
-          title="Back"
-          variant="secondary"
-          onPress={() => router.back()}
-        />
-      </View>
-
-      <View style={styles.content}>
-        <ProfileScreen />
-      </View>
-    </SafeAreaView>
->>>>>>> a89988e (jgfjjf)
   );
 }
 
