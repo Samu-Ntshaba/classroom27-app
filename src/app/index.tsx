@@ -48,6 +48,19 @@ export default function HomeScreen() {
     }
   }, [hydrated, loadUnreadCount]);
 
+  useEffect(() => {
+    if (!accessToken) return;
+    const socket = notificationService.connectSocket(accessToken, {
+      onUnreadCount: (count) => setUnreadCount(count),
+      onNotification: () => setUnreadCount((prev) => prev + 1),
+      onClose: () => {
+        loadUnreadCount();
+      },
+    });
+
+    return () => socket.close();
+  }, [accessToken, loadUnreadCount]);
+
   return (
     <Screen withHorizontalPadding={false}>
       <TopBar

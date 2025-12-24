@@ -47,6 +47,25 @@ export default function NotificationsScreen() {
     }, [loadNotifications])
   );
 
+  useEffect(() => {
+    if (!accessToken) return;
+    const socket = notificationService.connectSocket(accessToken, {
+      onNotification: (notification) => {
+        setNotifications((prev) => {
+          if (prev.some((item) => item.id === notification.id)) {
+            return prev;
+          }
+          return [notification, ...prev];
+        });
+      },
+      onClose: () => {
+        loadNotifications();
+      },
+    });
+
+    return () => socket.close();
+  }, [accessToken, loadNotifications]);
+
   const markAllRead = async () => {
     setNotifications((prev) => prev.map((item) => ({ ...item, isRead: true })));
     try {
@@ -65,6 +84,13 @@ export default function NotificationsScreen() {
       await notificationService.markRead(notification.id);
     } catch {
       loadNotifications();
+    }
+  };
+
+  const handleNotificationPress = (notification: NotificationItem) => {
+    markRead(notification);
+    if (notification.actionUrl) {
+      router.push(notification.actionUrl);
     }
   };
 
@@ -88,7 +114,10 @@ export default function NotificationsScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
           renderItem={({ item }) => (
-            <Pressable style={[styles.card, item.isRead ? styles.cardRead : null]} onPress={() => markRead(item)}>
+            <Pressable
+              style={[styles.card, item.isRead ? styles.cardRead : null]}
+              onPress={() => handleNotificationPress(item)}
+            >
               <View style={styles.cardHeader}>
                 <Text weight="600">{item.title ?? 'Classroom update'}</Text>
                 {!item.isRead ? <View style={styles.unreadDot} /> : null}
