@@ -22,7 +22,7 @@ const logoSvg = `
     />
     <text
       x="24"
-      y="28"
+      y="24"
       fill="#0F162A"
       font-size="16"
       font-weight="800"
@@ -36,7 +36,7 @@ const logoSvg = `
   </g>
 
   <!-- WORDMARK -->
-  <g transform="translate(76,0)">
+  <g transform="translate(64,0)">
     <text
       x="0"
       y="32"
@@ -71,4 +71,4 @@ interface LogoProps {
   height?: number;
 }
 
-export const Logo = ({ width = 160, height = 34 }: LogoProps) => <SvgXml xml={logoSvg} width={width} height={height} />;
+export const Logo = ({ width = 200, height = 44 }: LogoProps) => <SvgXml xml={logoSvg} width={width} height={height} />;
