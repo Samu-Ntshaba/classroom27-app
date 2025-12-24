@@ -1,15 +1,88 @@
 import React from 'react';
 import { SvgXml } from 'react-native-svg';
 
-const logoSvg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg width="160" height="32" viewBox="0 0 160 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="32" height="32" rx="12" fill="#1FC7B5"/>
-  <text x="44" y="21" font-family="Arial" font-size="18" font-weight="700" fill="#0F162A">Classroom 27</text>
-</svg>`;
+const logoSvg = `
+<svg
+  width="300"
+  height="64"
+  viewBox="0 0 300 64"
+  xmlns="http://www.w3.org/2000/svg"
+  role="img"
+  aria-label="Classroom 27 logo"
+>
+  <!-- ICON -->
+  <g transform="translate(12,6)">
+    <rect
+      x="0"
+      y="0"
+      width="48"
+      height="48"
+      rx="18"
+      fill="#1FC7B5"
+    />
+    <text
+      x="24"
+      y="28"
+      fill="#0F162A"
+      font-size="16"
+      font-weight="800"
+      text-anchor="middle"
+      dominant-baseline="middle"
+      letter-spacing="0.05em"
+      font-family="Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif"
+    >
+      CR
+    </text>
+  </g>
 
+<<<<<<< HEAD
 interface LogoProps {
   width?: number;
   height?: number;
 }
 
 export const Logo = ({ width = 160, height = 32 }: LogoProps) => <SvgXml xml={logoSvg} width={width} height={height} />;
+=======
+  <!-- WORDMARK -->
+  <g transform="translate(76,0)">
+    <text
+      x="0"
+      y="32"
+      fill="#0C1A2B"
+      font-size="22"
+      font-weight="600"
+      dominant-baseline="middle"
+      letter-spacing="-0.02em"
+      font-family="Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif"
+    >
+      Classroom
+    </text>
+
+    <text
+      x="124"
+      y="32"
+      fill="#1FC7B5"
+      font-size="22"
+      font-weight="800"
+      dominant-baseline="middle"
+      letter-spacing="-0.01em"
+      font-family="Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif"
+    >
+      27
+    </text>
+  </g>
+</svg>
+`;
+
+type LogoProps = {
+  width?: number;
+  height?: number;
+};
+
+export const Logo: React.FC<LogoProps> = ({
+  width = 160,
+  height = 34,
+}) => {
+  return <SvgXml xml={logoSvg} width={width} height={height} />;
+};
+>>>>>>> a89988e (jgfjjf)

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -16,6 +17,17 @@ import { authService } from '../services/auth.service';
 import { notificationService } from '../services/notification.service';
 import { userService } from '../services/user.service';
 import { useAuthStore } from '../store/auth.store';
+=======
+import { useRouter } from 'expo-router';
+import React from 'react';
+import { StyleSheet, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { Button } from '../components/ui/Button';
+import { Logo } from '../components/ui/Logo';
+import { ProfileScreen } from '../features/auth/ProfileScreen';
+
+>>>>>>> a89988e (jgfjjf)
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { getApiErrorMessage } from '../utils/error';
@@ -187,6 +199,7 @@ export default function ProfileRoute() {
   }, [loading, profile, user]);
 
   return (
+<<<<<<< HEAD
     <Screen>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.headerRow}>
@@ -306,6 +319,23 @@ export default function ProfileRoute() {
         </View>
       </ScrollView>
     </Screen>
+=======
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={styles.header}>
+        {/* Keep wordmark smaller in headers */}
+        <Logo width={140} />
+        <Button
+          title="Back"
+          variant="secondary"
+          onPress={() => router.back()}
+        />
+      </View>
+
+      <View style={styles.content}>
+        <ProfileScreen />
+      </View>
+    </SafeAreaView>
+>>>>>>> a89988e (jgfjjf)
   );
 }
 

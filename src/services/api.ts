@@ -2,7 +2,7 @@ import axios, { AxiosError, AxiosRequestConfig } from 'axios';
 import { authStore } from '../store/auth.store';
 import { storage } from './storage.service';
 
-export const API_BASE_URL = 'https://classroom27-server-production.up.railway.app/api';
+export const API_BASE_URL = 'http://localhost:4000/api';
 
 interface RetryConfig extends AxiosRequestConfig {
   _retry?: boolean;
@@ -54,14 +54,15 @@ const refreshTokens = async () => {
   return refreshPromise;
 };
 
-api.interceptors.request.use(async (config) => {
+api.interceptors.request.use((config) => {
   const { accessToken } = authStore.getState();
+
   if (accessToken) {
-    config.headers = {
-      ...config.headers,
-      Authorization: `Bearer ${accessToken}`,
-    };
+    // ✅ Axios v1-safe: set header without replacing headers object
+    config.headers = config.headers ?? {};
+    (config.headers as any).Authorization = `Bearer ${accessToken}`;
   }
+
   return config;
 });
 
