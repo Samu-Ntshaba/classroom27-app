@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Switch, View } from 'react-native';
 
+import * as ImagePicker from 'expo-image-picker';
 import { Controller, useForm } from 'react-hook-form';
-
 
 import { Screen } from '../components/layout/Screen';
 import { ProfileHeader } from '../components/profile/ProfileHeader';
@@ -14,6 +14,7 @@ import { SkeletonBlock } from '../components/ui/Skeleton';
 import { Text } from '../components/ui/Text';
 
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useRouter } from 'expo-router';
 import { authService } from '../services/auth.service';
 import { notificationService, NotificationSettings } from '../services/notification.service';
 import { userService } from '../services/user.service';
@@ -33,6 +34,22 @@ export default function ProfileRoute() {
   const accessToken = useAuthStore((state) => state.accessToken);
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
+  const mergeUser = useCallback(
+  (incoming: any) => {
+    if (!incoming) return;
+
+    // Read the latest store user (avoids stale closure issues)
+    const current = useAuthStore.getState().user;
+
+    if (current) {
+      setUser({ ...current, ...incoming });
+    } else {
+      setUser(incoming);
+    }
+  },
+  [setUser]
+);
+
 
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
