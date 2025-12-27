@@ -40,7 +40,14 @@
           }
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Classroom 27 to access your photos to upload images.",
+          "cameraPermission": "Allow Classroom 27 to access your camera to take a cover photo."
+        }
+      ]
     ],
     "expo-router": {
       "root": "src/app"
