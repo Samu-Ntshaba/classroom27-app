@@ -20,6 +20,8 @@ export default function RootLayout() {
         <Stack.Screen name="profile" />
         <Stack.Screen name="notifications" />
         <Stack.Screen name="search" />
+        <Stack.Screen name="classrooms/create" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="classrooms/[classroomId]" />
         <Stack.Screen name="auth" options={{ presentation: 'modal' }} />
         <Stack.Screen name="auth/request-password-reset" options={{ presentation: 'modal' }} />
         <Stack.Screen name="auth/reset-password" options={{ presentation: 'modal' }} />
