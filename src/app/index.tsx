@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { Screen } from '../components/layout/Screen';
 import { TopBar } from '../components/nav/TopBar';
+import { BottomMenu } from '../components/nav/BottomMenu';
 import { ClassroomCard } from '../components/classrooms/ClassroomCard';
 import { ClassroomCardSkeleton } from '../components/classrooms/ClassroomCardSkeleton';
 import { Text } from '../components/ui/Text';
@@ -15,6 +16,7 @@ import { spacing } from '../theme/spacing';
 
 const railSkeletons = Array.from({ length: 4 }).map((_, index) => ({ id: `rail-${index}` }));
 const listSkeletons = Array.from({ length: 4 }).map((_, index) => ({ id: `list-${index}` }));
+const bottomMenuHeight = 76;
 
 const FILTERS = [
   { key: 'latest', label: 'For you' },
@@ -278,6 +280,11 @@ export default function HomeScreen() {
             +
           </Text>
         </Pressable>
+        <BottomMenu
+          activeTab="home"
+          onPressHome={() => router.push('/')}
+          onPressMine={() => router.push('/classrooms/mine')}
+        />
       </View>
     </Screen>
   );
@@ -339,7 +346,7 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
   },
   listContent: {
-    paddingBottom: spacing.xl * 2,
+    paddingBottom: spacing.xl * 2 + bottomMenuHeight,
   },
   listCard: {
     paddingHorizontal: spacing.xl,
@@ -366,7 +373,7 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    bottom: spacing.xl,
+    bottom: spacing.xl + bottomMenuHeight,
     right: spacing.xl,
     width: 56,
     height: 56,
