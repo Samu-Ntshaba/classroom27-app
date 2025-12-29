@@ -3,6 +3,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { permissions as webrtcPermissions } from '@stream-io/react-native-webrtc';
 
 import {
   CallContent,
@@ -25,6 +26,8 @@ const normalizeMode = (value?: string) => (value === 'host' ? 'host' : 'particip
 
 type StreamClientType = InstanceType<typeof StreamVideoClient>;
 type StreamCallType = ReturnType<StreamClientType['call']>;
+
+const RETRY_DELAY_MS = 8000;
 
 const getParticipantCountFromCall = (call: StreamCallType) => {
   const anyState = call.state as any;
@@ -50,6 +53,18 @@ const toStreamClientUser = (rawUser: any) => {
     image: rawUser.image ?? rawUser.avatar ?? rawUser.profileImage ?? undefined,
     // type: 'authenticated', // omit unless you explicitly use guest users
   };
+};
+
+const isWaitingForHostError = (err: unknown) => {
+  const message = getApiErrorMessage(err, '').toLowerCase();
+  return (
+    message.includes('call has not been started') ||
+    message.includes('call not started') ||
+    message.includes('call is not live') ||
+    message.includes('not live yet') ||
+    message.includes('livestream has not started') ||
+    message.includes('call session not found')
+  );
 };
 
 const LiveCallStage = ({
@@ -136,17 +151,127 @@ export const LiveClassroomScreen = () => {
   const [bootstrap, setBootstrap] = useState<StreamBootstrapResponse | null>(null);
   const [client, setClient] = useState<StreamClientType | null>(null);
   const [call, setCall] = useState<StreamCallType | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState<'loading' | 'connecting' | 'waiting' | 'ready' | 'error'>('loading');
   const [error, setError] = useState<string | null>(null);
+  const clientRef = useRef<StreamClientType | null>(null);
+  const callRef = useRef<StreamCallType | null>(null);
+  const isActiveRef = useRef(true);
+  const hasJoinedRef = useRef(false);
+  const connectingRef = useRef(false);
   const hasLeftRef = useRef(false);
+  const disconnectingRef = useRef(false);
+  const lastJoinAttemptRef = useRef(0);
+  const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const unmountedRef = useRef(false);
 
   const handleLeave = useCallback(() => {
     router.back();
   }, [router]);
 
+  useEffect(() => {
+    unmountedRef.current = false;
+    isActiveRef.current = true;
+    return () => {
+      unmountedRef.current = true;
+      isActiveRef.current = false;
+    };
+  }, []);
+
+  const clearRetryTimeout = useCallback(() => {
+    if (retryTimeoutRef.current) {
+      clearTimeout(retryTimeoutRef.current);
+      retryTimeoutRef.current = null;
+    }
+  }, []);
+
+  const requestMediaPermissions = useCallback(
+    async (data: StreamBootstrapResponse, resolvedMode: 'host' | 'participant') => {
+      if (resolvedMode !== 'host') {
+        return { micGranted: false, cameraGranted: false };
+      }
+      let micGranted = false;
+      if (data.permissions.canPublishAudio) {
+        micGranted = Boolean(await webrtcPermissions.request({ name: 'microphone' }));
+      }
+      let cameraGranted = false;
+      if (data.permissions.canPublishVideo) {
+        const permission = await ImagePicker.requestCameraPermissionsAsync();
+        cameraGranted = permission.granted;
+      }
+      return { micGranted, cameraGranted };
+    },
+    []
+  );
+
+  const configureMediaAfterJoin = useCallback(
+    async (streamCall: StreamCallType, data: StreamBootstrapResponse, resolvedMode: 'host' | 'participant') => {
+      await streamCall.microphone.disable();
+      await streamCall.camera.disable();
+
+      if (resolvedMode !== 'host') return;
+
+      const { micGranted, cameraGranted } = await requestMediaPermissions(data, resolvedMode);
+
+      if (data.permissions.canPublishAudio && micGranted) {
+        await streamCall.microphone.enable();
+      }
+
+      if (data.permissions.canPublishVideo && cameraGranted) {
+        await streamCall.camera.enable();
+      }
+    },
+    [requestMediaPermissions]
+  );
+
+  const attemptJoin = useCallback(
+    async (
+      streamCall: StreamCallType,
+      data: StreamBootstrapResponse,
+      resolvedMode: 'host' | 'participant',
+      options?: { force?: boolean }
+    ) => {
+      if (hasJoinedRef.current || connectingRef.current) return;
+
+      const now = Date.now();
+      if (!options?.force && resolvedMode === 'participant' && now - lastJoinAttemptRef.current < RETRY_DELAY_MS) {
+        return;
+      }
+
+      connectingRef.current = true;
+      lastJoinAttemptRef.current = now;
+      setStatus('connecting');
+
+      try {
+        await streamCall.microphone.disable();
+        await streamCall.camera.disable();
+        await streamCall.join({ create: resolvedMode === 'host' });
+        if (!isActiveRef.current) return;
+        hasJoinedRef.current = true;
+        setStatus('ready');
+        await configureMediaAfterJoin(streamCall, data, resolvedMode);
+      } catch (err) {
+        if (!isActiveRef.current) return;
+        if (resolvedMode === 'participant' && isWaitingForHostError(err)) {
+          setStatus('waiting');
+          clearRetryTimeout();
+          retryTimeoutRef.current = setTimeout(() => {
+            void attemptJoin(streamCall, data, resolvedMode);
+          }, RETRY_DELAY_MS);
+        } else {
+          setError(getApiErrorMessage(err, 'Unable to join live class.'));
+          setStatus('error');
+        }
+      } finally {
+        connectingRef.current = false;
+      }
+    },
+    [clearRetryTimeout, configureMediaAfterJoin]
+  );
+
   const leaveCallOnce = useCallback(
     async (options?: { call?: StreamCallType | null; client?: StreamClientType | null }) => {
-      if (hasLeftRef.current) return;
+      if (hasLeftRef.current || disconnectingRef.current) return;
+      disconnectingRef.current = true;
       hasLeftRef.current = true;
 
       const callToLeave = options?.call ?? call;
@@ -166,7 +291,7 @@ export const LiveClassroomScreen = () => {
   useEffect(() => {
     if (!normalizedClassroomId) {
       setError('Missing classroom details.');
-      setLoading(false);
+      setStatus('error');
       return;
     }
 
@@ -185,8 +310,36 @@ export const LiveClassroomScreen = () => {
     let currentClient: StreamClientType | null = null;
     let currentCall: StreamCallType | null = null;
 
+    const ensureClient = (data: StreamBootstrapResponse, user: { id: string; name?: string; image?: string }) => {
+      if (clientRef.current) return clientRef.current;
+      const getOrCreate = (StreamVideoClient as unknown as {
+        getOrCreateInstance?: (options: { apiKey: string; user: { id: string; name?: string; image?: string }; token: string }) => StreamClientType;
+      }).getOrCreateInstance;
+      if (typeof getOrCreate === 'function') {
+        clientRef.current = getOrCreate({
+          apiKey: data.apiKey,
+          user,
+          token: data.token,
+        });
+      } else {
+        clientRef.current = new StreamVideoClient({
+          apiKey: data.apiKey,
+          user,
+          token: data.token,
+        });
+      }
+      return clientRef.current;
+    };
+
+    const ensureCall = (streamClient: StreamClientType, callId: string) => {
+      if (!callRef.current) {
+        callRef.current = streamClient.call('livestream', callId);
+      }
+      return callRef.current;
+    };
+
     const setup = async () => {
-      setLoading(true);
+      setStatus('loading');
       setError(null);
 
       try {
@@ -207,50 +360,21 @@ export const LiveClassroomScreen = () => {
           throw new Error('Stream user is missing.');
         }
 
-        const streamClient = new StreamVideoClient({
-          apiKey: data.apiKey,
-          user,
-          token: data.token, // must be generated for user.id
-        });
-
-        const streamCall = streamClient.call('livestream', data.callId);
+        const streamClient = ensureClient(data, user);
+        const streamCall = ensureCall(streamClient, data.callId);
 
         currentClient = streamClient;
         currentCall = streamCall;
 
-        await streamCall.join({ create: resolvedMode === 'host' });
-
-        if (!isActive) return;
         setBootstrap({ ...data, mode: resolvedMode });
         setClient(streamClient);
         setCall(streamCall);
 
-        void (async () => {
-          if (!isActive) return;
-
-          if (data.permissions.canPublishAudio) {
-            await streamCall.microphone.enable();
-          } else {
-            await streamCall.microphone.disable();
-          }
-
-          let cameraPermissionGranted = true;
-          if (data.permissions.canPublishVideo) {
-            const permission = await ImagePicker.requestCameraPermissionsAsync();
-            cameraPermissionGranted = permission.granted;
-          }
-
-          if (data.permissions.canPublishVideo && cameraPermissionGranted) {
-            await streamCall.camera.enable();
-          } else {
-            await streamCall.camera.disable();
-          }
-        })();
+        await attemptJoin(streamCall, data, resolvedMode);
       } catch (err) {
         if (!isActive) return;
         setError(getApiErrorMessage(err, 'Unable to join live class.'));
-      } finally {
-        if (isActive) setLoading(false);
+        setStatus('error');
       }
     };
 
@@ -258,29 +382,45 @@ export const LiveClassroomScreen = () => {
 
     return () => {
       isActive = false;
+      clearRetryTimeout();
 
       // cleanup
-      leaveCallOnce({ call: currentCall, client: currentClient });
+      setTimeout(() => {
+        if (!unmountedRef.current) return;
+        leaveCallOnce({ call: currentCall, client: currentClient });
+      }, 0);
     };
-  }, [accessToken, leaveCallOnce, mode, normalizedClassroomId, normalizedTitle, router, setPendingAction]);
+  }, [accessToken, attemptJoin, clearRetryTimeout, leaveCallOnce, mode, normalizedClassroomId, normalizedTitle, router, setPendingAction]);
+
+  const handleRetry = useCallback(() => {
+    if (!callRef.current || !bootstrap) return;
+    clearRetryTimeout();
+    lastJoinAttemptRef.current = 0;
+    void attemptJoin(callRef.current, bootstrap, bootstrap.mode, { force: true });
+  }, [attemptJoin, bootstrap, clearRetryTimeout]);
 
   const headerTitle = useMemo(
     () => (normalizedTitle && normalizedTitle.length ? normalizedTitle : 'Live classroom'),
     [normalizedTitle]
   );
 
-  if (loading) {
+  if (status === 'loading' || status === 'connecting' || status === 'waiting') {
     return (
       <SafeAreaView style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
         <Text variant="body" color={colors.mutedText}>
-          Connecting to live classroom...
+          {status === 'waiting' ? 'Waiting for the host to start the live class...' : 'Connecting to live classroom...'}
         </Text>
+        {status === 'waiting' && (
+          <Text weight="600" color={colors.primary} onPress={handleRetry}>
+            Retry now
+          </Text>
+        )}
       </SafeAreaView>
     );
   }
 
-  if (error || !client || !call || !bootstrap) {
+  if (status === 'error' || error || !client || !call || !bootstrap) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
         <Text variant="body" color={colors.mutedText}>
