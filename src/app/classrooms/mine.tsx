@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useFocusEffect } from '@react-navigation/native';
@@ -8,6 +8,7 @@ import { BottomMenu } from '../../components/nav/BottomMenu';
 import { ClassroomCard } from '../../components/classrooms/ClassroomCard';
 import { Text } from '../../components/ui/Text';
 import { classroomsService, Classroom } from '../../services/classrooms.service';
+import { useAuthStore } from '../../store/auth.store';
 import { colors } from '../../theme/colors';
 import { radius } from '../../theme/radius';
 import { spacing } from '../../theme/spacing';
@@ -16,11 +17,26 @@ const bottomMenuHeight = 64;
 
 export default function MyClassroomsScreen() {
   const router = useRouter();
+  const accessToken = useAuthStore((state) => state.accessToken);
+  const setPendingAction = useAuthStore((state) => state.setPendingAction);
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  const requireAuth = useCallback(
+    (action: () => void) => {
+      setPendingAction(() => action);
+      router.push('/auth');
+    },
+    [router, setPendingAction]
+  );
+
   const loadClassrooms = useCallback(async () => {
+    if (!accessToken) {
+      setClassrooms([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const data = await classroomsService.getMine();
@@ -30,13 +46,20 @@ export default function MyClassroomsScreen() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [accessToken]);
 
   useFocusEffect(
     useCallback(() => {
       loadClassrooms();
     }, [loadClassrooms])
   );
+
+  useEffect(() => {
+    if (!accessToken) {
+      setPendingAction(() => () => router.replace('/classrooms/mine'));
+      router.replace('/auth');
+    }
+  }, [accessToken, router, setPendingAction]);
 
   const handleDelete = useCallback(
     (classroomId: string) => {
@@ -114,7 +137,16 @@ export default function MyClassroomsScreen() {
                 <Text variant="small" color={colors.mutedText} style={styles.emptySubtitle}>
                   Create your first classroom to see it here.
                 </Text>
-                <Pressable style={styles.createCta} onPress={() => router.push('/classrooms/create')}>
+                <Pressable
+                  style={styles.createCta}
+                  onPress={() => {
+                    if (accessToken) {
+                      router.push('/classrooms/create');
+                      return;
+                    }
+                    requireAuth(() => router.push('/classrooms/create'));
+                  }}
+                >
                   <Text weight="600" color={colors.textDark}>
                     Create a classroom
                   </Text>
@@ -135,7 +167,9 @@ export default function MyClassroomsScreen() {
           activeTab="mine"
           onPressHome={() => router.push('/')}
           onPressMine={() => router.push('/classrooms/mine')}
-          onPressSettings={() => router.push('/settings')}
+          onPressSettings={() =>
+            accessToken ? router.push('/settings') : requireAuth(() => router.push('/settings'))
+          }
         />
       </View>
     </Screen>
@@ -174,7 +208,9 @@ const styles = StyleSheet.create({
     minWidth: 90,
   },
   updateButton: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   deleteButton: {
     backgroundColor: colors.danger,
@@ -189,7 +225,7 @@ const styles = StyleSheet.create({
   },
   createCta: {
     marginTop: spacing.sm,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.action,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
     borderRadius: 999,

@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Screen } from '../../components/layout/Screen';
 import { BottomMenu } from '../../components/nav/BottomMenu';
 import { Text } from '../../components/ui/Text';
+import { useAuthStore } from '../../store/auth.store';
 import { colors } from '../../theme/colors';
 import { radius } from '../../theme/radius';
 import { spacing } from '../../theme/spacing';
@@ -13,6 +14,23 @@ const bottomMenuHeight = 64;
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const accessToken = useAuthStore((state) => state.accessToken);
+  const setPendingAction = useAuthStore((state) => state.setPendingAction);
+
+  const requireAuth = React.useCallback(
+    (action: () => void) => {
+      setPendingAction(() => action);
+      router.push('/auth');
+    },
+    [router, setPendingAction]
+  );
+
+  useEffect(() => {
+    if (!accessToken) {
+      setPendingAction(() => () => router.replace('/settings'));
+      router.replace('/auth');
+    }
+  }, [accessToken, router, setPendingAction]);
 
   return (
     <Screen>
@@ -53,7 +71,7 @@ export default function SettingsScreen() {
       <BottomMenu
         activeTab="settings"
         onPressHome={() => router.push('/')}
-        onPressMine={() => router.push('/classrooms/mine')}
+        onPressMine={() => (accessToken ? router.push('/classrooms/mine') : requireAuth(() => router.push('/classrooms/mine')))}
         onPressSettings={() => router.push('/settings')}
       />
       <View style={styles.bottomSpacer} />

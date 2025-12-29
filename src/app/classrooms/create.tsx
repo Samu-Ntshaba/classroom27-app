@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -97,6 +97,7 @@ const buildCreatePayload = (values: CreateClassroomFormValues): CreateClassroomP
 export default function CreateClassroomScreen() {
   const router = useRouter();
   const accessToken = useAuthStore((state) => state.accessToken);
+  const setPendingAction = useAuthStore((state) => state.setPendingAction);
   const [title, setTitle] = useState('');
   const [shortDescription, setShortDescription] = useState('');
   const [tagInput, setTagInput] = useState('');
@@ -120,6 +121,13 @@ export default function CreateClassroomScreen() {
     }
     return true;
   }, [price, priceType, title]);
+
+  useEffect(() => {
+    if (!accessToken) {
+      setPendingAction(() => () => router.replace('/classrooms/create'));
+      router.replace('/auth');
+    }
+  }, [accessToken, router, setPendingAction]);
 
   const addTag = () => {
     const trimmed = tagInput.trim();

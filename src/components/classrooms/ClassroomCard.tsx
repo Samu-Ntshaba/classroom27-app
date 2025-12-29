@@ -32,16 +32,14 @@ export const ClassroomCard = ({ classroom, variant = 'list', onPress, onPressCta
       : normalizedPriceType === 'SUBSCRIPTION'
         ? 'Subscription'
         : 'Free';
-  const isLive = classroom.status?.toString().toLowerCase() === 'live' || classroom.isAlwaysLiveDemo;
-  const isOneOnOne = classroom.maxSeats === 1 || classroom.tags?.includes('1on1') || classroom.tags?.includes('1-on-1');
+  const isLive = classroom.status?.toString().toLowerCase() === 'live';
 
   const pills = useMemo(() => {
     const list: string[] = [];
     if (isLive) list.push('Live');
     list.push(priceLabel);
-    if (isOneOnOne) list.push('1-on-1');
     return list;
-  }, [isLive, isOneOnOne, priceLabel]);
+  }, [isLive, priceLabel]);
 
   return (
     <Pressable onPress={onPress} style={[styles.card, variant === 'rail' && styles.cardRail]}>
@@ -87,6 +85,7 @@ export const ClassroomCard = ({ classroom, variant = 'list', onPress, onPressCta
         {variant === 'list' ? (
           <Button
             title={isLive ? 'Join' : 'View'}
+            variant={isLive ? 'primary' : 'secondary'}
             onPress={onPressCta ?? onPress ?? (() => undefined)}
             style={styles.cta}
           />

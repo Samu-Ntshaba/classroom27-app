@@ -12,10 +12,12 @@ interface AuthState {
   accessToken: string | null;
   refreshToken: string | null;
   hydrated: boolean;
+  pendingAction: (() => void) | null;
   setTokens: (accessToken: string, refreshToken: string) => void;
   setUser: (user: UserProfile | null) => void;
   clear: () => void;
   setHydrated: (value: boolean) => void;
+  setPendingAction: (action: (() => void) | null) => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -23,10 +25,12 @@ export const useAuthStore = create<AuthState>((set) => ({
   accessToken: null,
   refreshToken: null,
   hydrated: false,
+  pendingAction: null,
   setTokens: (accessToken, refreshToken) => set({ accessToken, refreshToken }),
   setUser: (user) => set({ user }),
-  clear: () => set({ user: null, accessToken: null, refreshToken: null }),
+  clear: () => set({ user: null, accessToken: null, refreshToken: null, pendingAction: null }),
   setHydrated: (value) => set({ hydrated: value }),
+  setPendingAction: (action) => set({ pendingAction: action }),
 }));
 
 export const authStore = {

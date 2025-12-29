@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Image, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AuthTabs } from './AuthTabs';
 import { LoginForm } from '../../features/auth/LoginForm';
 import { RegisterForm } from '../../features/auth/RegisterForm';
+import { BRAND_ICON } from '../../constants/branding';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { ModalCard } from '../ui/ModalCard';
 import { Text } from '../ui/Text';
-import { Logo } from '../ui/Logo';
 
 export const AuthModal = () => {
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
@@ -20,7 +20,7 @@ export const AuthModal = () => {
     <View style={styles.overlay}>
       <ModalCard style={styles.card}>
         <View style={styles.header}>
-          <Logo />
+          <Image source={BRAND_ICON} resizeMode="contain" style={styles.brandIcon} />
           <Pressable onPress={closeModal} hitSlop={10}>
             <Text weight="600" color={colors.mutedText}>
               Close
@@ -53,5 +53,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: spacing.lg,
+  },
+  brandIcon: {
+    width: 32,
+    height: 32,
   },
 });

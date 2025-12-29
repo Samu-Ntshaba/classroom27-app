@@ -27,6 +27,7 @@ export default function ProfileRoute() {
   const accessToken = useAuthStore((state) => state.accessToken);
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
+  const setPendingAction = useAuthStore((state) => state.setPendingAction);
   const mergeUser = useCallback(
     (incoming: any) => {
       if (!incoming) return;
@@ -75,6 +76,7 @@ export default function ProfileRoute() {
 
   useEffect(() => {
     if (!accessToken) {
+      setPendingAction(() => () => router.replace('/profile'));
       router.replace('/auth');
       return;
     }

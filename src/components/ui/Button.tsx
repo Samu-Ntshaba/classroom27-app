@@ -21,7 +21,7 @@ export const Button = ({
   disabled = false,
 }: ButtonProps) => {
   const backgroundColor =
-    variant === 'primary' ? colors.primary : variant === 'secondary' ? colors.card : 'transparent';
+    variant === 'primary' ? colors.action : variant === 'secondary' ? colors.card : 'transparent';
   const borderColor = variant === 'secondary' ? colors.border : 'transparent';
   const textColor = variant === 'primary' ? colors.textDark : colors.text;
 

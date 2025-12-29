@@ -18,19 +18,12 @@ const railSkeletons = Array.from({ length: 4 }).map((_, index) => ({ id: `rail-$
 const listSkeletons = Array.from({ length: 4 }).map((_, index) => ({ id: `list-${index}` }));
 const bottomMenuHeight = 64;
 
-const FILTERS = [
-  { key: 'latest', label: 'For you' },
-  { key: 'live', label: 'Live' },
-  { key: 'free', label: 'Free' },
-  { key: 'paid', label: 'Paid' },
-  { key: '1on1', label: '1-on-1' },
-];
-
 export default function HomeScreen() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
   const accessToken = useAuthStore((state) => state.accessToken);
   const hydrated = useAuthStore((state) => state.hydrated);
+  const setPendingAction = useAuthStore((state) => state.setPendingAction);
   const [unreadCount, setUnreadCount] = useState(0);
   const [liveClasses, setLiveClasses] = useState<Classroom[]>([]);
   const [trendingClasses, setTrendingClasses] = useState<Classroom[]>([]);
@@ -38,9 +31,16 @@ export default function HomeScreen() {
   const [liveLoading, setLiveLoading] = useState(true);
   const [trendingLoading, setTrendingLoading] = useState(true);
   const [feedLoading, setFeedLoading] = useState(true);
-  const [activeFilter, setActiveFilter] = useState('latest');
 
   const isAuthenticated = Boolean(accessToken);
+
+  const requireAuth = useCallback(
+    (action: () => void) => {
+      setPendingAction(() => action);
+      router.push('/auth');
+    },
+    [router, setPendingAction]
+  );
 
   const loadUnreadCount = useCallback(async () => {
     if (!accessToken) {
@@ -79,10 +79,10 @@ export default function HomeScreen() {
     }
   }, []);
 
-  const loadFeed = useCallback(async (filter: string) => {
+  const loadFeed = useCallback(async () => {
     setFeedLoading(true);
     try {
-      const data = await classroomsService.listClassrooms({ type: filter });
+      const data = await classroomsService.listClassrooms({ type: 'latest' });
       setFeedClasses(data);
     } catch {
       setFeedClasses([]);
@@ -96,8 +96,8 @@ export default function HomeScreen() {
       loadUnreadCount();
       loadLive();
       loadTrending();
-      loadFeed(activeFilter);
-    }, [activeFilter, loadFeed, loadLive, loadTrending, loadUnreadCount])
+      loadFeed();
+    }, [loadFeed, loadLive, loadTrending, loadUnreadCount])
   );
 
   useEffect(() => {
@@ -107,8 +107,8 @@ export default function HomeScreen() {
   }, [hydrated, loadUnreadCount]);
 
   useEffect(() => {
-    loadFeed(activeFilter);
-  }, [activeFilter, loadFeed]);
+    loadFeed();
+  }, [loadFeed]);
 
   useEffect(() => {
     if (!accessToken) return;
@@ -192,30 +192,17 @@ export default function HomeScreen() {
           </View>
           {renderRail(trendingClasses, trendingLoading)}
         </View>
-        <View style={styles.filterRow}>
-          {FILTERS.map((filter) => {
-            const isActive = filter.key === activeFilter;
-            return (
-              <Pressable
-                key={filter.key}
-                onPress={() => setActiveFilter(filter.key)}
-                style={[styles.filterChip, isActive && styles.filterChipActive]}
-              >
-                <Text variant="small" weight="600" color={isActive ? colors.textDark : colors.mutedText}>
-                  {filter.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-          {feedLoading ? <ActivityIndicator size="small" color={colors.primary} /> : null}
-        </View>
+        {feedLoading ? (
+          <View style={styles.feedLoading}>
+            <ActivityIndicator size="small" color={colors.primary} />
+          </View>
+        ) : null}
         <Text variant="h3" weight="700" style={styles.sectionTitle}>
           Latest classrooms
         </Text>
       </View>
     ),
     [
-      activeFilter,
       feedLoading,
       hydrated,
       isAuthenticated,
@@ -231,8 +218,10 @@ export default function HomeScreen() {
     <Screen withHorizontalPadding={false}>
       <TopBar
         onPressSearch={() => router.push('/search')}
-        onPressNotifications={() => (isAuthenticated ? router.push('/notifications') : router.push('/auth'))}
-        onPressProfile={() => (isAuthenticated ? router.push('/profile') : router.push('/auth'))}
+        onPressNotifications={() =>
+          isAuthenticated ? router.push('/notifications') : requireAuth(() => router.push('/notifications'))
+        }
+        onPressProfile={() => (isAuthenticated ? router.push('/profile') : requireAuth(() => router.push('/profile')))}
         unreadCount={unreadCount}
         avatarUrl={user?.avatarUrl}
         userName={user?.name}
@@ -264,7 +253,12 @@ export default function HomeScreen() {
                 <Text variant="small" color={colors.mutedText} style={styles.emptySubtitle}>
                   Create the first one and invite your classmates.
                 </Text>
-                <Pressable style={styles.emptyCta} onPress={() => router.push('/classrooms/create')}>
+                <Pressable
+                  style={styles.emptyCta}
+                  onPress={() =>
+                    isAuthenticated ? router.push('/classrooms/create') : requireAuth(() => router.push('/classrooms/create'))
+                  }
+                >
                   <Text weight="600" color={colors.textDark}>
                     Create a classroom
                   </Text>
@@ -275,7 +269,12 @@ export default function HomeScreen() {
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
         />
-        <Pressable style={styles.fab} onPress={() => router.push('/classrooms/create')}>
+        <Pressable
+          style={styles.fab}
+          onPress={() =>
+            isAuthenticated ? router.push('/classrooms/create') : requireAuth(() => router.push('/classrooms/create'))
+          }
+        >
           <Text variant="h3" weight="700" color={colors.textDark}>
             +
           </Text>
@@ -283,8 +282,12 @@ export default function HomeScreen() {
         <BottomMenu
           activeTab="home"
           onPressHome={() => router.push('/')}
-          onPressMine={() => router.push('/classrooms/mine')}
-          onPressSettings={() => router.push('/settings')}
+          onPressMine={() =>
+            isAuthenticated ? router.push('/classrooms/mine') : requireAuth(() => router.push('/classrooms/mine'))
+          }
+          onPressSettings={() =>
+            isAuthenticated ? router.push('/settings') : requireAuth(() => router.push('/settings'))
+          }
         />
       </View>
     </Screen>
@@ -326,25 +329,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
   },
-  filterRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
+  feedLoading: {
     paddingHorizontal: spacing.xl,
     marginBottom: spacing.md,
-    alignItems: 'center',
-  },
-  filterChip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    backgroundColor: colors.card,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  filterChipActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
   },
   listContent: {
     paddingBottom: spacing.xl * 2 + bottomMenuHeight,
@@ -367,7 +354,7 @@ const styles = StyleSheet.create({
   },
   emptyCta: {
     marginTop: spacing.sm,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.action,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
     borderRadius: 999,
@@ -379,7 +366,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.action,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
