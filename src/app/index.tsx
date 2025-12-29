@@ -16,7 +16,7 @@ import { spacing } from '../theme/spacing';
 
 const railSkeletons = Array.from({ length: 4 }).map((_, index) => ({ id: `rail-${index}` }));
 const listSkeletons = Array.from({ length: 4 }).map((_, index) => ({ id: `list-${index}` }));
-const bottomMenuHeight = 76;
+const bottomMenuHeight = 64;
 
 const FILTERS = [
   { key: 'latest', label: 'For you' },
@@ -284,6 +284,7 @@ export default function HomeScreen() {
           activeTab="home"
           onPressHome={() => router.push('/')}
           onPressMine={() => router.push('/classrooms/mine')}
+          onPressSettings={() => router.push('/settings')}
         />
       </View>
     </Screen>

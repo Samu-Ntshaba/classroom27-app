@@ -12,7 +12,7 @@ import { colors } from '../../theme/colors';
 import { radius } from '../../theme/radius';
 import { spacing } from '../../theme/spacing';
 
-const bottomMenuHeight = 76;
+const bottomMenuHeight = 64;
 
 export default function MyClassroomsScreen() {
   const router = useRouter();
@@ -135,6 +135,7 @@ export default function MyClassroomsScreen() {
           activeTab="mine"
           onPressHome={() => router.push('/')}
           onPressMine={() => router.push('/classrooms/mine')}
+          onPressSettings={() => router.push('/settings')}
         />
       </View>
     </Screen>
