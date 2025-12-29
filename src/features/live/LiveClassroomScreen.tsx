@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { permissions as webrtcPermissions } from '@stream-io/react-native-webrtc';
+import { CallingState } from '@stream-io/video-client';
 
 import {
   CallContent,
@@ -64,6 +65,16 @@ const isWaitingForHostError = (err: unknown) => {
     message.includes('not live yet') ||
     message.includes('livestream has not started') ||
     message.includes('call session not found')
+  );
+};
+
+const isCallConnecting = (streamCall: StreamCallType) => {
+  const callingState = streamCall.state?.callingState;
+  return (
+    callingState === CallingState.JOINING ||
+    callingState === CallingState.JOINED ||
+    callingState === CallingState.RECONNECTING ||
+    callingState === CallingState.MIGRATING
   );
 };
 
@@ -231,6 +242,7 @@ export const LiveClassroomScreen = () => {
       options?: { force?: boolean }
     ) => {
       if (hasJoinedRef.current || connectingRef.current) return;
+      if (isCallConnecting(streamCall)) return;
 
       const now = Date.now();
       if (!options?.force && resolvedMode === 'participant' && now - lastJoinAttemptRef.current < RETRY_DELAY_MS) {
@@ -252,6 +264,12 @@ export const LiveClassroomScreen = () => {
       } catch (err) {
         if (!isActiveRef.current) return;
         if (resolvedMode === 'participant' && isWaitingForHostError(err)) {
+          try {
+            const callingState = streamCall.state?.callingState;
+            if (callingState && callingState !== CallingState.LEFT && callingState !== CallingState.IDLE) {
+              await streamCall.leave();
+            }
+          } catch {}
           setStatus('waiting');
           clearRetryTimeout();
           retryTimeoutRef.current = setTimeout(() => {
