@@ -27,6 +27,9 @@ const normalizeMode = (value?: string) => (value === 'host' ? 'host' : 'particip
 type StreamClientType = InstanceType<typeof StreamVideoClient>;
 type StreamCallType = ReturnType<StreamClientType['call']>;
 
+/**
+ * Extract participants from call state (RN SDK state shape can differ by version).
+ */
 const getParticipantsFromCall = (call: StreamCallType): LiveParticipant[] => {
   const anyState = call.state as any;
 
@@ -42,6 +45,23 @@ const getParticipantCountFromCall = (call: StreamCallType) => {
   const count = anyState?.participantCount ?? anyState?.participantsCount;
   if (typeof count === 'number') return count;
   return getParticipantsFromCall(call).length;
+};
+
+/**
+ * ✅ IMPORTANT:
+ * StreamVideoClient expects Stream's "User/UserRequest" shape (at least { id }),
+ * not the SDK's StreamUser type. We map whatever backend returns into a minimal
+ * safe shape to satisfy types and runtime requirements.
+ */
+const toStreamClientUser = (rawUser: any) => {
+  if (!rawUser?.id) return undefined;
+
+  return {
+    id: String(rawUser.id),
+    name: rawUser.name ?? rawUser.fullName ?? rawUser.username ?? undefined,
+    image: rawUser.image ?? rawUser.avatar ?? rawUser.profileImage ?? undefined,
+    // type: 'authenticated', // omit unless you explicitly use guest users
+  };
 };
 
 const LiveCallStage = ({
@@ -242,12 +262,20 @@ export const LiveClassroomScreen = () => {
           throw new Error('Stream credentials are missing.');
         }
 
+        // ✅ Map backend user -> Stream "UserRequest" shape expected by StreamVideoClient
+        const user = toStreamClientUser(data.user);
+        if (!user?.id) {
+          throw new Error('Stream user is missing an id.');
+        }
+
         const streamClient = new StreamVideoClient({
           apiKey: data.apiKey,
-          user: data.user,
-          token: data.token,
+          user,
+          token: data.token, // must be generated for user.id
         });
+
         const streamCall = streamClient.call('livestream', data.callId);
+
         currentClient = streamClient;
         currentCall = streamCall;
 
@@ -283,6 +311,8 @@ export const LiveClassroomScreen = () => {
 
     return () => {
       isActive = false;
+
+      // cleanup
       if (currentCall) {
         currentCall.leave().catch(() => undefined);
       }
