@@ -220,28 +220,32 @@ export const LiveClassroomScreen = () => {
 
         await streamCall.join({ create: resolvedMode === 'host' });
 
-        if (data.permissions.canPublishAudio) {
-          await streamCall.microphone.enable();
-        } else {
-          await streamCall.microphone.disable();
-        }
-
-        let cameraPermissionGranted = true;
-        if (data.permissions.canPublishVideo) {
-          const permission = await ImagePicker.requestCameraPermissionsAsync();
-          cameraPermissionGranted = permission.granted;
-        }
-
-        if (data.permissions.canPublishVideo && cameraPermissionGranted) {
-          await streamCall.camera.enable();
-        } else {
-          await streamCall.camera.disable();
-        }
-
         if (!isActive) return;
         setBootstrap({ ...data, mode: resolvedMode });
         setClient(streamClient);
         setCall(streamCall);
+
+        void (async () => {
+          if (!isActive) return;
+
+          if (data.permissions.canPublishAudio) {
+            await streamCall.microphone.enable();
+          } else {
+            await streamCall.microphone.disable();
+          }
+
+          let cameraPermissionGranted = true;
+          if (data.permissions.canPublishVideo) {
+            const permission = await ImagePicker.requestCameraPermissionsAsync();
+            cameraPermissionGranted = permission.granted;
+          }
+
+          if (data.permissions.canPublishVideo && cameraPermissionGranted) {
+            await streamCall.camera.enable();
+          } else {
+            await streamCall.camera.disable();
+          }
+        })();
       } catch (err) {
         if (!isActive) return;
         setError(getApiErrorMessage(err, 'Unable to join live class.'));
