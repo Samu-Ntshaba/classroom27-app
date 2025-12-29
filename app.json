@@ -10,7 +10,11 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.classroom27-app"
+      "bundleIdentifier": "com.anonymous.classroom27-app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Allow Classroom 27 to access your camera for live classes.",
+        "NSMicrophoneUsageDescription": "Allow Classroom 27 to access your microphone for live classes."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -23,7 +27,7 @@
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "android.permission.RECORD_AUDIO",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.CAMERA"
       ],
       "package": "com.anonymous.classroom27app"
     },
