@@ -1,30 +1,68 @@
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, StyleSheet, View } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
 import {
-  GridLayout,
-  SpeakerLayout,
+  CallContent,
   StreamCall,
   StreamVideo,
   StreamVideoClient,
-  useCallStateHooks,
 } from '@stream-io/video-react-native-sdk';
+
+import { Text } from '../../components/ui/Text';
+import { StreamBootstrapResponse, streamService } from '../../services/stream.service';
+import { useAuthStore } from '../../store/auth.store';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
-import { Text } from '../../components/ui/Text';
-import { useAuthStore } from '../../store/auth.store';
 import { getApiErrorMessage } from '../../utils/error';
-import { streamService, StreamBootstrapResponse } from '../../services/stream.service';
+
 import { LiveControls } from './components/LiveControls';
-import { LiveParticipantsSheet, LiveParticipant } from './components/LiveParticipantsSheet';
+import { LiveParticipant, LiveParticipantsSheet } from './components/LiveParticipantsSheet';
 import { LiveTopBar } from './components/LiveTopBar';
 
-const normalizeParam = (value?: string | string[]) =>
-  Array.isArray(value) ? value[0] : value;
-
+const normalizeParam = (value?: string | string[]) => (Array.isArray(value) ? value[0] : value);
 const normalizeMode = (value?: string) => (value === 'host' ? 'host' : 'participant');
-type StreamCallType = ReturnType<StreamVideoClient['call']>;
+
+type StreamClientType = InstanceType<typeof StreamVideoClient>;
+type StreamCallType = ReturnType<StreamClientType['call']>;
+
+/**
+ * Extract participants from call state (RN SDK state shape can differ by version).
+ */
+const getParticipantsFromCall = (call: StreamCallType): LiveParticipant[] => {
+  const anyState = call.state as any;
+
+  const participantsMap: Record<string, LiveParticipant> | undefined =
+    anyState?.participants ?? anyState?.participantsBySessionId ?? anyState?.participantsById;
+
+  if (!participantsMap) return [];
+  return Object.values(participantsMap) as LiveParticipant[];
+};
+
+const getParticipantCountFromCall = (call: StreamCallType) => {
+  const anyState = call.state as any;
+  const count = anyState?.participantCount ?? anyState?.participantsCount;
+  if (typeof count === 'number') return count;
+  return getParticipantsFromCall(call).length;
+};
+
+/**
+ * ✅ IMPORTANT:
+ * StreamVideoClient expects Stream's "User/UserRequest" shape (at least { id }),
+ * not the SDK's StreamUser type. We map whatever backend returns into a minimal
+ * safe shape to satisfy types and runtime requirements.
+ */
+const toStreamClientUser = (rawUser: any) => {
+  if (!rawUser?.id) return undefined;
+
+  return {
+    id: String(rawUser.id),
+    name: rawUser.name ?? rawUser.fullName ?? rawUser.username ?? undefined,
+    image: rawUser.image ?? rawUser.avatar ?? rawUser.profileImage ?? undefined,
+    // type: 'authenticated', // omit unless you explicitly use guest users
+  };
+};
 
 const LiveCallStage = ({
   call,
@@ -39,13 +77,52 @@ const LiveCallStage = ({
   permissions: StreamBootstrapResponse['permissions'];
   onLeave: () => void;
 }) => {
-  const { useParticipantCount, useParticipants } = useCallStateHooks();
-  const participantCount = useParticipantCount();
-  const participants = useParticipants() as LiveParticipant[];
   const [showParticipants, setShowParticipants] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [reaction, setReaction] = useState<string | null>(null);
   const [raisedHand, setRaisedHand] = useState(false);
+
+  const [participants, setParticipants] = useState<LiveParticipant[]>(() => getParticipantsFromCall(call));
+  const [participantCount, setParticipantCount] = useState<number>(() => getParticipantCountFromCall(call));
+
+  useEffect(() => {
+    let mounted = true;
+
+    const sync = () => {
+      if (!mounted) return;
+      setParticipants(getParticipantsFromCall(call));
+      setParticipantCount(getParticipantCountFromCall(call));
+    };
+
+    sync();
+
+    const unsubscribers: Array<() => void> = [];
+
+    const tryOn = (eventName: string) => {
+      const anyCall = call as any;
+      if (typeof anyCall?.on === 'function') {
+        const handler = () => sync();
+        anyCall.on(eventName, handler);
+        unsubscribers.push(() => anyCall.off?.(eventName, handler));
+      }
+    };
+
+    tryOn('call.participant_joined');
+    tryOn('call.participant_left');
+    tryOn('call.session_participant_joined');
+    tryOn('call.session_participant_left');
+    tryOn('call.updated');
+    tryOn('call.session_updated');
+
+    return () => {
+      mounted = false;
+      unsubscribers.forEach((fn) => {
+        try {
+          fn();
+        } catch {}
+      });
+    };
+  }, [call]);
 
   const handleReact = (emoji: string) => {
     setReaction(emoji);
@@ -57,18 +134,22 @@ const LiveCallStage = ({
     setTimeout(() => setRaisedHand(false), 1500);
   };
 
-  const isGrid = participantCount > 2;
   const handleBack = async () => {
-    await call.leave();
+    try {
+      await call.leave();
+    } catch {}
     onLeave();
   };
 
   return (
     <View style={styles.liveContainer}>
       <View style={styles.videoContainer}>
-        {isGrid ? <GridLayout /> : <SpeakerLayout />}
+        {/* ✅ RN SDK: use CallContent for full-screen video UI */}
+        <CallContent />
       </View>
+
       <LiveTopBar title={classroomTitle} participantCount={participantCount} onPressBack={handleBack} />
+
       <LiveControls
         call={call}
         permissions={permissions}
@@ -78,12 +159,14 @@ const LiveCallStage = ({
         onRaiseHand={handleRaiseHand}
         onLeave={onLeave}
       />
+
       <LiveParticipantsSheet
         visible={showParticipants}
         participants={participants}
         mode={mode}
         onClose={() => setShowParticipants(false)}
       />
+
       <Modal visible={showChat} transparent animationType="slide">
         <View style={styles.chatBackdrop}>
           <View style={styles.chatSheet}>
@@ -101,11 +184,13 @@ const LiveCallStage = ({
           </View>
         </View>
       </Modal>
+
       {reaction ? (
         <View style={styles.reactionOverlay}>
           <Text variant="h2">{reaction}</Text>
         </View>
       ) : null}
+
       {raisedHand ? (
         <View style={styles.reactionOverlay}>
           <Text variant="h3">✋ Hand raised</Text>
@@ -122,13 +207,16 @@ export const LiveClassroomScreen = () => {
     classroomId?: string;
     title?: string;
   }>();
+
   const normalizedClassroomId = normalizeParam(classroomId);
   const normalizedTitle = normalizeParam(title);
   const mode = normalizeMode(normalizeParam(modeParam));
+
   const accessToken = useAuthStore((state) => state.accessToken);
   const setPendingAction = useAuthStore((state) => state.setPendingAction);
+
   const [bootstrap, setBootstrap] = useState<StreamBootstrapResponse | null>(null);
-  const [client, setClient] = useState<StreamVideoClient | null>(null);
+  const [client, setClient] = useState<StreamClientType | null>(null);
   const [call, setCall] = useState<StreamCallType | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -156,12 +244,13 @@ export const LiveClassroomScreen = () => {
     }
 
     let isActive = true;
-    let currentClient: StreamVideoClient | null = null;
+    let currentClient: StreamClientType | null = null;
     let currentCall: StreamCallType | null = null;
 
     const setup = async () => {
       setLoading(true);
       setError(null);
+
       try {
         const data = await streamService.bootstrapLiveClassroom({
           classroomId: normalizedClassroomId,
@@ -177,10 +266,12 @@ export const LiveClassroomScreen = () => {
 
         const streamClient = new StreamVideoClient({
           apiKey: data.apiKey,
-          user: data.user,
-          token: data.token,
+          user,
+          token: data.token, // must be generated for user.id
         });
+
         const streamCall = streamClient.call('livestream', data.callId);
+
         currentClient = streamClient;
         currentCall = streamCall;
 
@@ -213,6 +304,8 @@ export const LiveClassroomScreen = () => {
 
     return () => {
       isActive = false;
+
+      // cleanup
       if (currentCall) {
         currentCall.leave().catch(() => undefined);
       }

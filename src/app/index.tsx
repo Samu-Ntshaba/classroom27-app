@@ -1,14 +1,15 @@
+import { useFocusEffect } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
-import { useRouter } from 'expo-router';
-import { useFocusEffect } from '@react-navigation/native';
-import { Screen } from '../components/layout/Screen';
-import { TopBar } from '../components/nav/TopBar';
-import { BottomMenu } from '../components/nav/BottomMenu';
 import { ClassroomCard } from '../components/classrooms/ClassroomCard';
 import { ClassroomCardSkeleton } from '../components/classrooms/ClassroomCardSkeleton';
+import { Screen } from '../components/layout/Screen';
+import { BottomMenu } from '../components/nav/BottomMenu';
+import { TopBar } from '../components/nav/TopBar';
 import { Text } from '../components/ui/Text';
-import { classroomsService, Classroom } from '../services/classrooms.service';
+import { DEMO_CLASSROOM } from '../features/live/demoClassroom';
+import { Classroom, classroomsService } from '../services/classrooms.service';
 import { notificationService } from '../services/notification.service';
 import { useAuthStore } from '../store/auth.store';
 import { colors } from '../theme/colors';
@@ -233,9 +234,6 @@ export default function HomeScreen() {
         <Text variant="h3" weight="700" style={styles.sectionTitle}>
           Latest classrooms
         </Text>
-        <View style={styles.demoCard}>
-          <DemoLiveCard onPressJoin={handleJoinDemo} />
-        </View>
       </View>
     ),
     [
