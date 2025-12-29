@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { Screen } from '../components/layout/Screen';
@@ -13,6 +13,7 @@ import { notificationService } from '../services/notification.service';
 import { useAuthStore } from '../store/auth.store';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
+import { DemoLiveCard } from '../features/live/DemoLiveCard';
 
 const railSkeletons = Array.from({ length: 4 }).map((_, index) => ({ id: `rail-${index}` }));
 const listSkeletons = Array.from({ length: 4 }).map((_, index) => ({ id: `list-${index}` }));
@@ -90,6 +91,29 @@ export default function HomeScreen() {
       setFeedLoading(false);
     }
   }, []);
+
+  const promptJoinMode = useCallback(() => {
+    Alert.alert('Join live demo', 'How would you like to join?', [
+      {
+        text: 'Host',
+        onPress: () => router.push('/live-demo?mode=host'),
+      },
+      {
+        text: 'Participant',
+        onPress: () => router.push('/live-demo?mode=participant'),
+      },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  }, [router]);
+
+  const handleJoinDemo = useCallback(() => {
+    if (!isAuthenticated) {
+      setPendingAction(() => promptJoinMode);
+      router.push('/auth');
+      return;
+    }
+    promptJoinMode();
+  }, [isAuthenticated, promptJoinMode, router, setPendingAction]);
 
   useFocusEffect(
     useCallback(() => {
@@ -200,12 +224,16 @@ export default function HomeScreen() {
         <Text variant="h3" weight="700" style={styles.sectionTitle}>
           Latest classrooms
         </Text>
+        <View style={styles.demoCard}>
+          <DemoLiveCard onPressJoin={handleJoinDemo} />
+        </View>
       </View>
     ),
     [
       feedLoading,
       hydrated,
       isAuthenticated,
+      handleJoinDemo,
       liveClasses,
       liveLoading,
       trendingClasses,
@@ -332,6 +360,10 @@ const styles = StyleSheet.create({
   feedLoading: {
     paddingHorizontal: spacing.xl,
     marginBottom: spacing.md,
+  },
+  demoCard: {
+    paddingHorizontal: spacing.xl,
+    marginBottom: spacing.lg,
   },
   listContent: {
     paddingBottom: spacing.xl * 2 + bottomMenuHeight,
