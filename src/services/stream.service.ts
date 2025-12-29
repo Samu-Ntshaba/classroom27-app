@@ -45,14 +45,24 @@ const normalizePermissions = (data: any) => ({
   ),
 });
 
-const normalizeBootstrap = (data: any): StreamBootstrapResponse => ({
-  apiKey: data?.apiKey ?? data?.api_key ?? '',
-  callId: String(data?.callId ?? data?.call_id ?? ''),
-  token: data?.token ?? '',
-  user: normalizeUser(data?.user ?? data?.user_info ?? data?.member ?? data?.participant),
-  mode: data?.mode === 'host' ? 'host' : 'participant',
-  permissions: normalizePermissions(data?.permissions ?? data?.permission ?? data?.capabilities ?? data),
-});
+const normalizeMode = (value: any): 'host' | 'participant' => {
+  if (typeof value !== 'string') return 'participant';
+  const normalized = value.toLowerCase();
+  return normalized === 'host' ? 'host' : 'participant';
+};
+
+const normalizeBootstrap = (data: any): StreamBootstrapResponse => {
+  const callId = data?.callId ?? data?.call_id ?? data?.call?.id ?? data?.call?.call_id ?? '';
+
+  return {
+    apiKey: data?.apiKey ?? data?.api_key ?? '',
+    callId: String(callId ?? ''),
+    token: data?.token ?? '',
+    user: normalizeUser(data?.user ?? data?.user_info ?? data?.member ?? data?.participant),
+    mode: normalizeMode(data?.mode ?? data?.role ?? data?.joinAs),
+    permissions: normalizePermissions(data?.permissions ?? data?.permission ?? data?.capabilities ?? data),
+  };
+};
 
 const normalizeToken = (data: any): StreamTokenResponse => ({
   apiKey: data?.apiKey ?? data?.api_key ?? '',

@@ -258,14 +258,10 @@ export const LiveClassroomScreen = () => {
         });
         if (!isActive) return;
 
-        if (!data.apiKey || !data.callId || !data.token || !data.user?.id) {
+        const resolvedMode = mode;
+        const invalidId = data.callId === '0' || data.user?.id === '0';
+        if (!data.apiKey || !data.callId || !data.token || !data.user?.id || invalidId) {
           throw new Error('Stream credentials are missing.');
-        }
-
-        // ✅ Map backend user -> Stream "UserRequest" shape expected by StreamVideoClient
-        const user = toStreamClientUser(data.user);
-        if (!user?.id) {
-          throw new Error('Stream user is missing an id.');
         }
 
         const streamClient = new StreamVideoClient({
@@ -279,24 +275,21 @@ export const LiveClassroomScreen = () => {
         currentClient = streamClient;
         currentCall = streamCall;
 
-        await streamCall.join({ create: mode === 'host' });
+        await streamCall.join({ create: resolvedMode === 'host' });
 
-        // Host vs participant device state
-        if (data.permissions.canPublishAudio && mode === 'host') {
+        if (data.permissions.canPublishAudio) {
           await streamCall.microphone.enable();
         } else {
           await streamCall.microphone.disable();
         }
-
-        if (data.permissions.canPublishVideo && mode === 'host') {
+        if (data.permissions.canPublishVideo) {
           await streamCall.camera.enable();
         } else {
           await streamCall.camera.disable();
         }
 
         if (!isActive) return;
-
-        setBootstrap(data);
+        setBootstrap({ ...data, mode: resolvedMode });
         setClient(streamClient);
         setCall(streamCall);
       } catch (err) {
