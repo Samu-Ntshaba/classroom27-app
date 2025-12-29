@@ -25,8 +25,14 @@ const formatDateTime = (value?: string | null) => {
 export const ClassroomCard = ({ classroom, variant = 'list', onPress, onPressCta }: ClassroomCardProps) => {
   const cover = classroom.coverImageUrl;
   const formattedStart = formatDateTime(classroom.startsAt);
-  const priceLabel = classroom.priceType === 'paid' ? 'Paid' : 'Free';
-  const isLive = classroom.status === 'live' || classroom.isAlwaysLiveDemo;
+  const normalizedPriceType = classroom.priceType?.toString().toUpperCase();
+  const priceLabel =
+    normalizedPriceType === 'ONCE_OFF' || normalizedPriceType === 'PAID'
+      ? 'Paid'
+      : normalizedPriceType === 'SUBSCRIPTION'
+        ? 'Subscription'
+        : 'Free';
+  const isLive = classroom.status?.toString().toLowerCase() === 'live' || classroom.isAlwaysLiveDemo;
   const isOneOnOne = classroom.maxSeats === 1 || classroom.tags?.includes('1on1') || classroom.tags?.includes('1-on-1');
 
   const pills = useMemo(() => {

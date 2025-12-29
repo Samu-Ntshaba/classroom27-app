@@ -26,6 +26,7 @@ export default function ClassroomDetailsScreen() {
   const [classroom, setClassroom] = useState<Classroom | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [workflowLoading, setWorkflowLoading] = useState<'publish' | 'go-live' | null>(null);
 
   const loadClassroom = useCallback(async () => {
     if (!classroomId) return;
@@ -47,8 +48,19 @@ export default function ClassroomDetailsScreen() {
   const tags = useMemo(() => {
     if (!classroom) return [];
     const list: string[] = [];
-    if (classroom.status === 'live' || classroom.isAlwaysLiveDemo) list.push('Live');
-    if (classroom.priceType) list.push(classroom.priceType === 'paid' ? 'Paid' : 'Free');
+    if (classroom.status?.toLowerCase() === 'live' || classroom.isAlwaysLiveDemo) list.push('Live');
+    if (classroom.priceType) {
+      const normalizedPriceType = classroom.priceType.toString().toUpperCase();
+      list.push(
+        normalizedPriceType === 'ONCE_OFF'
+          ? 'One-time'
+          : normalizedPriceType === 'SUBSCRIPTION'
+            ? 'Subscription'
+            : normalizedPriceType === 'PAID'
+              ? 'Paid'
+              : 'Free'
+      );
+    }
     if (classroom.maxSeats === 1) list.push('1-on-1');
     return list;
   }, [classroom]);
@@ -99,6 +111,42 @@ export default function ClassroomDetailsScreen() {
       Alert.alert('Unable to join classroom', getApiErrorMessage(error));
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  const handlePublish = async () => {
+    if (!classroom) return;
+    if (!accessToken) {
+      router.push('/auth');
+      return;
+    }
+    setWorkflowLoading('publish');
+    try {
+      const updated = await classroomsService.publishClassroom(classroom.id);
+      setClassroom(updated ?? classroom);
+      Alert.alert('Published', 'Your classroom is now published.');
+    } catch (error) {
+      Alert.alert('Unable to publish', getApiErrorMessage(error));
+    } finally {
+      setWorkflowLoading(null);
+    }
+  };
+
+  const handleGoLive = async () => {
+    if (!classroom) return;
+    if (!accessToken) {
+      router.push('/auth');
+      return;
+    }
+    setWorkflowLoading('go-live');
+    try {
+      const updated = await classroomsService.goLiveClassroom(classroom.id);
+      setClassroom(updated ?? classroom);
+      Alert.alert('Live now', 'Your classroom is now live.');
+    } catch (error) {
+      Alert.alert('Unable to go live', getApiErrorMessage(error));
+    } finally {
+      setWorkflowLoading(null);
     }
   };
 
@@ -174,6 +222,14 @@ export default function ClassroomDetailsScreen() {
               {classroom.shortDescription}
             </Text>
           ) : null}
+          <View style={styles.statusRow}>
+            <Text variant="tiny" color={colors.mutedText}>
+              Status
+            </Text>
+            <Text variant="small" weight="600">
+              {classroom.status ?? 'Unknown'}
+            </Text>
+          </View>
           {classroom.fullDescription ? (
             <Text variant="body" color={colors.mutedText} style={styles.sectionText}>
               {classroom.fullDescription}
@@ -216,7 +272,11 @@ export default function ClassroomDetailsScreen() {
                   Price
                 </Text>
                 <Text variant="small" weight="600">
-                  {classroom.priceType === 'paid' ? `$${classroom.price ?? 0}` : 'Free'}
+                  {classroom.priceType?.toString().toUpperCase() === 'FREE'
+                    ? 'Free'
+                    : classroom.priceType?.toString().toUpperCase() === 'SUBSCRIPTION'
+                      ? `$${classroom.price ?? 0} / ${classroom.subscriptionType ?? 'subscription'}`
+                      : `$${classroom.price ?? 0}`}
                 </Text>
               </View>
             ) : null}
@@ -235,6 +295,25 @@ export default function ClassroomDetailsScreen() {
               style={styles.actionButton}
             />
           </View>
+          {(classroom.canPublish || classroom.status?.toUpperCase() === 'DRAFT') && (
+            <View style={styles.workflowRow}>
+              <Button
+                title={workflowLoading === 'publish' ? 'Publishing...' : 'Publish'}
+                onPress={handlePublish}
+                disabled={workflowLoading !== null}
+                style={styles.actionButton}
+              />
+              {classroom.canGoLive ? (
+                <Button
+                  title={workflowLoading === 'go-live' ? 'Going live...' : 'Go live'}
+                  variant="secondary"
+                  onPress={handleGoLive}
+                  disabled={workflowLoading !== null}
+                  style={styles.actionButton}
+                />
+              ) : null}
+            </View>
+          )}
           <Button
             title={actionLoading ? 'Joining...' : 'Join classroom'}
             onPress={handleSubscribe}
@@ -299,6 +378,13 @@ const styles = StyleSheet.create({
   sectionText: {
     lineHeight: 22,
   },
+  statusRow: {
+    backgroundColor: colors.card,
+    borderRadius: radius.md,
+    padding: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
   metaGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -313,6 +399,10 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   actionRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  workflowRow: {
     flexDirection: 'row',
     gap: spacing.sm,
   },
