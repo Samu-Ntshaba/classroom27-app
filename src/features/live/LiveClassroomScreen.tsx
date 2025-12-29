@@ -16,10 +16,12 @@ import { Text } from '../../components/ui/Text';
 import { useAuthStore } from '../../store/auth.store';
 import { getApiErrorMessage } from '../../utils/error';
 import { streamService, StreamBootstrapResponse } from '../../services/stream.service';
-import { DEMO_CLASSROOM } from './demoClassroom';
 import { LiveControls } from './components/LiveControls';
 import { LiveParticipantsSheet, LiveParticipant } from './components/LiveParticipantsSheet';
 import { LiveTopBar } from './components/LiveTopBar';
+
+const normalizeParam = (value?: string | string[]) =>
+  Array.isArray(value) ? value[0] : value;
 
 const normalizeMode = (value?: string) => (value === 'host' ? 'host' : 'participant');
 type StreamCallType = ReturnType<StreamVideoClient['call']>;
@@ -115,8 +117,14 @@ const LiveCallStage = ({
 
 export const LiveClassroomScreen = () => {
   const router = useRouter();
-  const { mode: modeParam } = useLocalSearchParams<{ mode?: string }>();
-  const mode = normalizeMode(modeParam);
+  const { mode: modeParam, classroomId, title } = useLocalSearchParams<{
+    mode?: string;
+    classroomId?: string;
+    title?: string;
+  }>();
+  const normalizedClassroomId = normalizeParam(classroomId);
+  const normalizedTitle = normalizeParam(title);
+  const mode = normalizeMode(normalizeParam(modeParam));
   const accessToken = useAuthStore((state) => state.accessToken);
   const setPendingAction = useAuthStore((state) => state.setPendingAction);
   const [bootstrap, setBootstrap] = useState<StreamBootstrapResponse | null>(null);
@@ -130,8 +138,19 @@ export const LiveClassroomScreen = () => {
   }, [router]);
 
   useEffect(() => {
+    if (!normalizedClassroomId) {
+      setError('Missing classroom details.');
+      setLoading(false);
+      return;
+    }
+
     if (!accessToken) {
-      setPendingAction(() => router.replace(`/live-demo?mode=${mode}`));
+      setPendingAction(() =>
+        router.replace({
+          pathname: '/live-demo',
+          params: { classroomId: normalizedClassroomId, mode, title: normalizedTitle ?? '' },
+        })
+      );
       router.push('/auth');
       return;
     }
@@ -145,7 +164,7 @@ export const LiveClassroomScreen = () => {
       setError(null);
       try {
         const data = await streamService.bootstrapLiveClassroom({
-          classroomId: DEMO_CLASSROOM.id,
+          classroomId: normalizedClassroomId,
           mode,
         });
         if (!isActive) return;
@@ -195,9 +214,12 @@ export const LiveClassroomScreen = () => {
         currentClient.disconnectUser();
       }
     };
-  }, [accessToken, mode, router, setPendingAction]);
+  }, [accessToken, mode, normalizedClassroomId, normalizedTitle, router, setPendingAction]);
 
-  const headerTitle = useMemo(() => DEMO_CLASSROOM.title, []);
+  const headerTitle = useMemo(
+    () => (normalizedTitle && normalizedTitle.length ? normalizedTitle : 'Live classroom'),
+    [normalizedTitle]
+  );
 
   if (loading) {
     return (
