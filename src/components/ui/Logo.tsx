@@ -7,12 +7,12 @@ interface LogoProps {
   height?: number;
 }
 
-export const Logo = ({ width = 180, height = 32 }: LogoProps) => (
+export const Logo = ({ width = 280, height = 42 }: LogoProps) => (
   <Image source={BRAND_LOGO} resizeMode="contain" style={[styles.logo, { width, height }]} />
 );
 
 const styles = StyleSheet.create({
   logo: {
-    height: 32,
+    height: 42,
   },
 });
