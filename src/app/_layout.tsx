@@ -25,6 +25,7 @@ export default function RootLayout() {
         <Stack.Screen name="classrooms/mine" />
         <Stack.Screen name="classrooms/edit/[classroomId]" options={{ presentation: 'modal' }} />
         <Stack.Screen name="classrooms/[classroomId]" />
+        <Stack.Screen name="live-demo" options={{ presentation: 'fullScreenModal' }} />
         <Stack.Screen name="settings" />
         <Stack.Screen name="settings/password" options={{ presentation: 'modal' }} />
         <Stack.Screen name="settings/notifications" />
