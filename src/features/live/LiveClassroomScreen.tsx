@@ -169,6 +169,12 @@ export const LiveClassroomScreen = () => {
         });
         if (!isActive) return;
 
+        const resolvedMode = mode;
+        const invalidId = data.callId === '0' || data.user?.id === '0';
+        if (!data.apiKey || !data.callId || !data.token || !data.user?.id || invalidId) {
+          throw new Error('Stream credentials are missing.');
+        }
+
         const streamClient = new StreamVideoClient({
           apiKey: data.apiKey,
           user: data.user,
@@ -178,21 +184,21 @@ export const LiveClassroomScreen = () => {
         currentClient = streamClient;
         currentCall = streamCall;
 
-        await streamCall.join({ create: true });
+        await streamCall.join({ create: resolvedMode === 'host' });
 
-        if (data.permissions.canPublishAudio && mode === 'host') {
+        if (data.permissions.canPublishAudio) {
           await streamCall.microphone.enable();
         } else {
           await streamCall.microphone.disable();
         }
-        if (data.permissions.canPublishVideo && mode === 'host') {
+        if (data.permissions.canPublishVideo) {
           await streamCall.camera.enable();
         } else {
           await streamCall.camera.disable();
         }
 
         if (!isActive) return;
-        setBootstrap(data);
+        setBootstrap({ ...data, mode: resolvedMode });
         setClient(streamClient);
         setCall(streamCall);
       } catch (err) {
@@ -208,10 +214,10 @@ export const LiveClassroomScreen = () => {
     return () => {
       isActive = false;
       if (currentCall) {
-        currentCall.leave();
+        currentCall.leave().catch(() => undefined);
       }
       if (currentClient) {
-        currentClient.disconnectUser();
+        currentClient.disconnectUser().catch(() => undefined);
       }
     };
   }, [accessToken, mode, normalizedClassroomId, normalizedTitle, router, setPendingAction]);

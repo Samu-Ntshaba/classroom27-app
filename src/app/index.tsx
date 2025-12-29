@@ -14,6 +14,7 @@ import { useAuthStore } from '../store/auth.store';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { DemoLiveCard } from '../features/live/DemoLiveCard';
+import { DEMO_CLASSROOM } from '../features/live/demoClassroom';
 
 const railSkeletons = Array.from({ length: 4 }).map((_, index) => ({ id: `rail-${index}` }));
 const listSkeletons = Array.from({ length: 4 }).map((_, index) => ({ id: `list-${index}` }));
@@ -96,11 +97,19 @@ export default function HomeScreen() {
     Alert.alert('Join live demo', 'How would you like to join?', [
       {
         text: 'Host',
-        onPress: () => router.push('/live-demo?mode=host'),
+        onPress: () =>
+          router.push({
+            pathname: '/live-demo',
+            params: { classroomId: DEMO_CLASSROOM.id, mode: 'host', title: DEMO_CLASSROOM.title },
+          }),
       },
       {
         text: 'Participant',
-        onPress: () => router.push('/live-demo?mode=participant'),
+        onPress: () =>
+          router.push({
+            pathname: '/live-demo',
+            params: { classroomId: DEMO_CLASSROOM.id, mode: 'participant', title: DEMO_CLASSROOM.title },
+          }),
       },
       { text: 'Cancel', style: 'cancel' },
     ]);
