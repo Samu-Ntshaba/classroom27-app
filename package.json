@@ -19,6 +19,8 @@
     "@stream-io/video-react-native-sdk": "^1.24.0",
     "axios": "^1.11.0",
     "expo": "~54.0.27",
+    "expo-av": "~15.0.2",
+    "expo-camera": "~17.0.4",
     "expo-constants": "~18.0.11",
     "expo-font": "~14.0.10",
     "expo-haptics": "~15.0.8",
