@@ -169,6 +169,10 @@ export const LiveClassroomScreen = () => {
         });
         if (!isActive) return;
 
+        if (!data.apiKey || !data.callId || !data.token || !data.user?.id) {
+          throw new Error('Stream credentials are missing.');
+        }
+
         const streamClient = new StreamVideoClient({
           apiKey: data.apiKey,
           user: data.user,
@@ -178,7 +182,7 @@ export const LiveClassroomScreen = () => {
         currentClient = streamClient;
         currentCall = streamCall;
 
-        await streamCall.join({ create: true });
+        await streamCall.join({ create: mode === 'host' });
 
         if (data.permissions.canPublishAudio && mode === 'host') {
           await streamCall.microphone.enable();
@@ -208,10 +212,10 @@ export const LiveClassroomScreen = () => {
     return () => {
       isActive = false;
       if (currentCall) {
-        currentCall.leave();
+        currentCall.leave().catch(() => undefined);
       }
       if (currentClient) {
-        currentClient.disconnectUser();
+        currentClient.disconnectUser().catch(() => undefined);
       }
     };
   }, [accessToken, mode, normalizedClassroomId, normalizedTitle, router, setPendingAction]);

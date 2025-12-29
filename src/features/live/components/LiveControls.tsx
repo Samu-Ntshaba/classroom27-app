@@ -40,19 +40,36 @@ export const LiveControls = ({
 
   const handleToggleMic = async () => {
     if (!permissions.canPublishAudio) return;
-    if (micEnabled) {
-      await call.microphone.disable();
-    } else {
-      await call.microphone.enable();
+    try {
+      if (micEnabled) {
+        await call.microphone.disable();
+      } else {
+        await call.microphone.enable();
+      }
+    } catch (error) {
+      console.warn('Unable to toggle microphone', error);
     }
   };
 
   const handleToggleCamera = async () => {
     if (!permissions.canPublishVideo) return;
-    if (cameraEnabled) {
-      await call.camera.disable();
-    } else {
-      await call.camera.enable();
+    try {
+      if (cameraEnabled) {
+        await call.camera.disable();
+      } else {
+        await call.camera.enable();
+      }
+    } catch (error) {
+      console.warn('Unable to toggle camera', error);
+    }
+  };
+
+  const handleFlipCamera = async () => {
+    if (!cameraEnabled) return;
+    try {
+      await call.camera.flip();
+    } catch (error) {
+      console.warn('Unable to flip camera', error);
     }
   };
 
@@ -73,7 +90,7 @@ export const LiveControls = ({
           disabled={!permissions.canPublishVideo}
           active={cameraEnabled}
         />
-        <ControlButton icon="camera-reverse" label="Flip" onPress={() => call.camera.flip()} />
+        <ControlButton icon="camera-reverse" label="Flip" onPress={handleFlipCamera} />
         <ControlButton icon="people" label="People" onPress={onShowParticipants} />
         <ControlButton icon="chatbubbles" label="Chat" onPress={onShowChat} />
         <ControlButton icon="hand-left" label="Raise" onPress={onRaiseHand} accent />
@@ -82,8 +99,13 @@ export const LiveControls = ({
           icon="log-out"
           label="Leave"
           onPress={async () => {
-            await call.leave();
-            onLeave();
+            try {
+              await call.leave();
+            } catch (error) {
+              console.warn('Unable to leave call', error);
+            } finally {
+              onLeave();
+            }
           }}
           danger
         />
