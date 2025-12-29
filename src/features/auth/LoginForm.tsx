@@ -9,6 +9,7 @@ import { spacing } from '../../theme/spacing';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Text } from '../../components/ui/Text';
+import { useAuthStore } from '../../store/auth.store';
 import { getApiErrorMessage } from '../../utils/error';
 import { loginSchema, LoginValues } from '../../utils/validators';
 
@@ -39,7 +40,12 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
     setIsLoading(true);
     try {
       await authService.login(values);
+      const pendingAction = useAuthStore.getState().pendingAction;
       onSuccess();
+      if (pendingAction) {
+        useAuthStore.getState().setPendingAction(null);
+        pendingAction();
+      }
     } catch (err) {
       setError(getApiErrorMessage(err, 'Unable to sign in.'));
     } finally {

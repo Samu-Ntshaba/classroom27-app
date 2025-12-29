@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Classroom, classroomsService } from '../../services/classrooms.service';
-import { useAuthStore } from '../../store/auth.store';
+import { authStore, useAuthStore } from '../../store/auth.store';
 import { colors } from '../../theme/colors';
 import { radius } from '../../theme/radius';
 import { spacing } from '../../theme/spacing';
@@ -22,7 +22,7 @@ const formatDateTime = (value?: string | null) => {
 export default function ClassroomDetailsScreen() {
   const router = useRouter();
   const { classroomId } = useLocalSearchParams<{ classroomId: string }>();
-  const accessToken = useAuthStore((state) => state.accessToken);
+  const setPendingAction = useAuthStore((state) => state.setPendingAction);
   const [classroom, setClassroom] = useState<Classroom | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -48,7 +48,7 @@ export default function ClassroomDetailsScreen() {
   const tags = useMemo(() => {
     if (!classroom) return [];
     const list: string[] = [];
-    if (classroom.status?.toLowerCase() === 'live' || classroom.isAlwaysLiveDemo) list.push('Live');
+    if (classroom.status?.toLowerCase() === 'live') list.push('Live');
     if (classroom.priceType) {
       const normalizedPriceType = classroom.priceType.toString().toUpperCase();
       list.push(
@@ -61,13 +61,14 @@ export default function ClassroomDetailsScreen() {
               : 'Free'
       );
     }
-    if (classroom.maxSeats === 1) list.push('1-on-1');
     return list;
   }, [classroom]);
 
   const toggleLike = async () => {
     if (!classroom) return;
-    if (!accessToken) {
+    const token = authStore.getState().accessToken;
+    if (!token) {
+      setPendingAction(() => toggleLike);
       router.push('/auth');
       return;
     }
@@ -83,7 +84,9 @@ export default function ClassroomDetailsScreen() {
 
   const toggleSave = async () => {
     if (!classroom) return;
-    if (!accessToken) {
+    const token = authStore.getState().accessToken;
+    if (!token) {
+      setPendingAction(() => toggleSave);
       router.push('/auth');
       return;
     }
@@ -99,7 +102,9 @@ export default function ClassroomDetailsScreen() {
 
   const handleSubscribe = async () => {
     if (!classroom) return;
-    if (!accessToken) {
+    const token = authStore.getState().accessToken;
+    if (!token) {
+      setPendingAction(() => handleSubscribe);
       router.push('/auth');
       return;
     }
@@ -116,7 +121,9 @@ export default function ClassroomDetailsScreen() {
 
   const handlePublish = async () => {
     if (!classroom) return;
-    if (!accessToken) {
+    const token = authStore.getState().accessToken;
+    if (!token) {
+      setPendingAction(() => handlePublish);
       router.push('/auth');
       return;
     }
@@ -134,7 +141,9 @@ export default function ClassroomDetailsScreen() {
 
   const handleGoLive = async () => {
     if (!classroom) return;
-    if (!accessToken) {
+    const token = authStore.getState().accessToken;
+    if (!token) {
+      setPendingAction(() => handleGoLive);
       router.push('/auth');
       return;
     }
@@ -306,7 +315,6 @@ export default function ClassroomDetailsScreen() {
               {classroom.canGoLive ? (
                 <Button
                   title={workflowLoading === 'go-live' ? 'Going live...' : 'Go live'}
-                  variant="secondary"
                   onPress={handleGoLive}
                   disabled={workflowLoading !== null}
                   style={styles.actionButton}
@@ -314,12 +322,14 @@ export default function ClassroomDetailsScreen() {
               ) : null}
             </View>
           )}
-          <Button
-            title={actionLoading ? 'Joining...' : 'Join classroom'}
-            onPress={handleSubscribe}
-            disabled={actionLoading}
-            style={styles.joinButton}
-          />
+          {classroom.status?.toUpperCase() === 'LIVE' ? (
+            <Button
+              title={actionLoading ? 'Joining...' : 'Join live class'}
+              onPress={handleSubscribe}
+              disabled={actionLoading}
+              style={styles.joinButton}
+            />
+          ) : null}
         </View>
       </ScrollView>
     </Screen>

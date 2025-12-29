@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { userService, UserSummary } from '../../services/user.service';
-import { useAuthStore } from '../../store/auth.store';
+import { authStore, useAuthStore } from '../../store/auth.store';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { Avatar } from '../ui/Avatar';
@@ -15,7 +16,8 @@ interface SuggestedUsersRailProps {
 }
 
 export const SuggestedUsersRail = ({ title = 'Suggested for you', onFollowChange }: SuggestedUsersRailProps) => {
-  const accessToken = useAuthStore((state) => state.accessToken);
+  const router = useRouter();
+  const setPendingAction = useAuthStore((state) => state.setPendingAction);
   const [users, setUsers] = useState<UserSummary[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -36,7 +38,10 @@ export const SuggestedUsersRail = ({ title = 'Suggested for you', onFollowChange
   }, [loadUsers]);
 
   const handleFollowToggle = async (user: UserSummary) => {
-    if (!accessToken) {
+    const token = authStore.getState().accessToken;
+    if (!token) {
+      setPendingAction(() => () => handleFollowToggle(user));
+      router.push('/auth');
       return;
     }
     const nextFollowing = !user.isFollowing;
@@ -91,7 +96,6 @@ export const SuggestedUsersRail = ({ title = 'Suggested for you', onFollowChange
                 variant={item.isFollowing ? 'secondary' : 'primary'}
                 onPress={() => handleFollowToggle(item)}
                 style={styles.followButton}
-                disabled={!accessToken}
               />
             </Pressable>
           );

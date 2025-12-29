@@ -28,7 +28,7 @@ export const TopBar = ({
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.sm }]}>
-      <Logo width={180} height={40} />
+      <Logo width={180} height={32} />
       <View style={styles.actions}>
         <Pressable style={styles.iconButton} onPress={onPressSearch}>
           <Ionicons name="search-outline" size={20} color={colors.textDark} />

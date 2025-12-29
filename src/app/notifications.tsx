@@ -14,6 +14,7 @@ import { spacing } from '../theme/spacing';
 export default function NotificationsScreen() {
   const router = useRouter();
   const accessToken = useAuthStore((state) => state.accessToken);
+  const setPendingAction = useAuthStore((state) => state.setPendingAction);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -35,6 +36,7 @@ export default function NotificationsScreen() {
 
   useEffect(() => {
     if (!accessToken) {
+      setPendingAction(() => () => router.replace('/notifications'));
       router.replace('/auth');
       return;
     }
