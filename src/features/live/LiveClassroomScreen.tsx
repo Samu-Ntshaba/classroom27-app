@@ -283,24 +283,12 @@ export const LiveClassroomScreen = () => {
 
     return () => {
       isActive = false;
-<<<<<<< HEAD
       if (currentCall) {
         currentCall.leave().catch(() => undefined);
       }
       if (currentClient) {
         currentClient.disconnectUser().catch(() => undefined);
       }
-=======
-
-      // cleanup (don’t block unmount)
-      try {
-        currentCall?.leave();
-      } catch {}
-
-      try {
-        currentClient?.disconnectUser();
-      } catch {}
->>>>>>> 1b24716 (ffg)
     };
   }, [accessToken, mode, normalizedClassroomId, normalizedTitle, router, setPendingAction]);
 
