@@ -159,6 +159,39 @@ export default function ClassroomDetailsScreen() {
     }
   };
 
+  const promptLiveJoinMode = (liveClassroomId: string, liveClassroomTitle: string) => {
+    Alert.alert('Go live', 'How would you like to join?', [
+      {
+        text: 'Host',
+        onPress: () =>
+          router.push({
+            pathname: '/live-demo',
+            params: { classroomId: liveClassroomId, mode: 'host', title: liveClassroomTitle },
+          }),
+      },
+      {
+        text: 'Participant',
+        onPress: () =>
+          router.push({
+            pathname: '/live-demo',
+            params: { classroomId: liveClassroomId, mode: 'participant', title: liveClassroomTitle },
+          }),
+      },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  const handleOpenLive = () => {
+    if (!classroom) return;
+    const token = authStore.getState().accessToken;
+    if (!token) {
+      setPendingAction(() => handleOpenLive);
+      router.push('/auth');
+      return;
+    }
+    promptLiveJoinMode(classroom.id, classroom.title ?? 'Live classroom');
+  };
+
   if (loading) {
     return (
       <Screen>
@@ -304,6 +337,7 @@ export default function ClassroomDetailsScreen() {
               style={styles.actionButton}
             />
           </View>
+          <Button title="Go live" onPress={handleOpenLive} style={styles.joinButton} />
           {(classroom.canPublish || classroom.status?.toUpperCase() === 'DRAFT') && (
             <View style={styles.workflowRow}>
               <Button
