@@ -7,7 +7,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Switch,
   View,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
@@ -16,66 +15,111 @@ import { Screen } from '../../components/layout/Screen';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Text } from '../../components/ui/Text';
-import { classroomsService } from '../../services/classrooms.service';
+import { classroomsService, CreateClassroomPayload } from '../../services/classrooms.service';
 import { useAuthStore } from '../../store/auth.store';
 import { colors } from '../../theme/colors';
 import { radius } from '../../theme/radius';
 import { spacing } from '../../theme/spacing';
 import { getApiErrorMessage } from '../../utils/error';
 
-type PriceType = 'free' | 'paid';
+type PriceType = 'FREE' | 'ONCE_OFF' | 'SUBSCRIPTION';
+
+type CreateClassroomFormValues = {
+  title: string;
+  shortDescription: string;
+  tags: string[];
+  coverImageUrl: string;
+  priceType: PriceType;
+  price: string;
+  subscriptionType: string;
+  startsAt: string;
+  endsAt: string;
+  frequency: string;
+  maxSeats: string;
+};
 
 const FREQUENCY_OPTIONS = ['Once', 'Daily', 'Weekly', 'Monthly'];
+
+const parseDateValue = (value: string) => {
+  if (!value) return undefined;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+};
+
+const buildCreatePayload = (values: CreateClassroomFormValues): CreateClassroomPayload => {
+  const payload: CreateClassroomPayload = {
+    title: values.title.trim(),
+    priceType: values.priceType,
+  };
+
+  const shortDescription = values.shortDescription.trim();
+  if (shortDescription) {
+    payload.shortDescription = shortDescription;
+  }
+
+  if (values.tags.length) {
+    payload.tags = values.tags;
+  }
+
+  if (values.coverImageUrl) {
+    payload.coverImageUrl = values.coverImageUrl;
+  }
+
+  const startsAt = parseDateValue(values.startsAt);
+  if (startsAt) {
+    payload.startsAt = startsAt;
+  }
+
+  const endsAt = parseDateValue(values.endsAt);
+  if (endsAt) {
+    payload.endsAt = endsAt;
+  }
+
+  if (values.frequency) {
+    payload.frequency = values.frequency;
+  }
+
+  if (values.maxSeats) {
+    payload.maxSeats = Number(values.maxSeats);
+  }
+
+  if (values.priceType !== 'FREE' && values.price) {
+    payload.price = Number(values.price);
+  }
+
+  if (values.priceType === 'SUBSCRIPTION' && values.subscriptionType.trim()) {
+    payload.subscriptionType = values.subscriptionType.trim();
+  }
+
+  return payload;
+};
 
 export default function CreateClassroomScreen() {
   const router = useRouter();
   const accessToken = useAuthStore((state) => state.accessToken);
-  const [step, setStep] = useState(1);
   const [title, setTitle] = useState('');
   const [shortDescription, setShortDescription] = useState('');
-  const [subject, setSubject] = useState('');
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [coverImageUrl, setCoverImageUrl] = useState('');
   const [uploadingCover, setUploadingCover] = useState(false);
-  const [isLocked, setIsLocked] = useState(false);
-  const [isAlwaysLiveDemo, setIsAlwaysLiveDemo] = useState(false);
   const [startsAt, setStartsAt] = useState('');
   const [endsAt, setEndsAt] = useState('');
   const [frequency, setFrequency] = useState('');
   const [maxSeats, setMaxSeats] = useState('');
-  const [minAge, setMinAge] = useState('');
-  const [priceType, setPriceType] = useState<PriceType>('free');
+  const [priceType, setPriceType] = useState<PriceType>('FREE');
   const [price, setPrice] = useState('');
   const [subscriptionType, setSubscriptionType] = useState('');
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const stepTitle = useMemo(() => {
-    switch (step) {
-      case 1:
-        return 'Basics';
-      case 2:
-        return 'Cover + Visibility';
-      case 3:
-        return 'Schedule + Capacity';
-      case 4:
-        return 'Pricing';
-      default:
-        return 'Create classroom';
-    }
-  }, [step]);
-
-  const totalSteps = 4;
-
-  const canProceed = useMemo(() => {
-    if (step === 1) {
-      return Boolean(title.trim());
-    }
-    if (step === 4 && priceType === 'paid') {
+  const canSubmit = useMemo(() => {
+    if (!title.trim()) return false;
+    if (priceType !== 'FREE') {
       return Boolean(price) && Number(price) > 0;
     }
     return true;
-  }, [price, priceType, step, title]);
+  }, [price, priceType, title]);
 
   const addTag = () => {
     const trimmed = tagInput.trim();
@@ -141,12 +185,6 @@ export default function CreateClassroomScreen() {
     ]);
   };
 
-  const parseDateValue = (value: string) => {
-    if (!value) return undefined;
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
-  };
-
   const handleSubmit = async () => {
     if (!accessToken) {
       router.push('/auth');
@@ -154,32 +192,22 @@ export default function CreateClassroomScreen() {
     }
     setSubmitting(true);
     try {
-      const payload: Record<string, any> = {
-        title: title.trim(),
-        shortDescription: shortDescription.trim() || undefined,
-        subject: subject.trim() || undefined,
-        tags: tags.length ? tags : undefined,
-        coverImageUrl: coverImageUrl || undefined,
-        isLocked,
-        isAlwaysLiveDemo,
-        startsAt: parseDateValue(startsAt),
-        endsAt: parseDateValue(endsAt),
-        frequency: frequency || undefined,
-        maxSeats: maxSeats ? Number(maxSeats) : undefined,
-        minAge: minAge ? Number(minAge) : undefined,
+      const payload = buildCreatePayload({
+        title,
+        shortDescription,
+        tags,
+        coverImageUrl,
         priceType,
-        price: priceType === 'paid' ? Number(price) : undefined,
-        subscriptionType: subscriptionType || undefined,
-      };
-
-      Object.keys(payload).forEach((key) => {
-        if (payload[key] === undefined || payload[key] === '') {
-          delete payload[key];
-        }
+        price,
+        subscriptionType,
+        startsAt,
+        endsAt,
+        frequency,
+        maxSeats,
       });
 
       const created = await classroomsService.createClassroom(payload);
-      Alert.alert('Classroom created', 'Your classroom is live.');
+      Alert.alert('Classroom created', 'Your classroom is ready for review.');
       if (created?.id) {
         router.replace(`/classrooms/${created.id}`);
       } else {
@@ -202,209 +230,158 @@ export default function CreateClassroomScreen() {
             </Text>
             <Button title="Back" variant="secondary" onPress={() => router.back()} style={styles.backButton} />
           </View>
-          <Text variant="small" color={colors.mutedText} style={styles.stepLabel}>
-            Step {step} of {totalSteps} · {stepTitle}
-          </Text>
 
-          {step === 1 ? (
-            <View>
-              <Input label="Title *" placeholder="Give this classroom a name" value={title} onChangeText={setTitle} />
+          <View>
+            <Text variant="small" weight="600" style={styles.sectionLabel}>
+              Basics
+            </Text>
+            <Input label="Title *" placeholder="Give this classroom a name" value={title} onChangeText={setTitle} />
+            <Input
+              label="Short description"
+              placeholder="What will students learn?"
+              value={shortDescription}
+              onChangeText={setShortDescription}
+            />
+            <View style={styles.tagRow}>
               <Input
-                label="Short description"
-                placeholder="What will students learn?"
-                value={shortDescription}
-                onChangeText={setShortDescription}
+                label="Tags"
+                placeholder="Add a tag and press add"
+                value={tagInput}
+                onChangeText={setTagInput}
+                onSubmitEditing={addTag}
+                style={styles.tagInput}
               />
-              <Input label="Subject" placeholder="Math, Music, Coding..." value={subject} onChangeText={setSubject} />
-              <View style={styles.tagRow}>
-                <Input
-                  label="Tags"
-                  placeholder="Add a tag and press add"
-                  value={tagInput}
-                  onChangeText={setTagInput}
-                  onSubmitEditing={addTag}
-                  style={styles.tagInput}
-                />
-                <Pressable style={styles.tagAdd} onPress={addTag}>
-                  <Text weight="600" color={colors.textDark}>
-                    Add
+              <Pressable style={styles.tagAdd} onPress={addTag}>
+                <Text weight="600" color={colors.textDark}>
+                  Add
+                </Text>
+              </Pressable>
+            </View>
+            <View style={styles.tagsWrap}>
+              {tags.map((tag) => (
+                <Pressable key={tag} style={styles.tagChip} onPress={() => removeTag(tag)}>
+                  <Text variant="tiny" weight="600">
+                    {tag} ×
                   </Text>
                 </Pressable>
-              </View>
-              <View style={styles.tagsWrap}>
-                {tags.map((tag) => (
-                  <Pressable key={tag} style={styles.tagChip} onPress={() => removeTag(tag)}>
-                    <Text variant="tiny" weight="600">
-                      {tag} ×
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.sectionSpacing}>
+            <Text variant="small" weight="600" style={styles.sectionLabel}>
+              Cover image
+            </Text>
+            <Pressable style={styles.coverButton} onPress={showImageOptions} disabled={uploadingCover}>
+              {uploadingCover ? (
+                <ActivityIndicator color={colors.primary} />
+              ) : (
+                <Text variant="small" weight="600">
+                  {coverImageUrl ? 'Replace cover image' : 'Upload cover image'}
+                </Text>
+              )}
+            </Pressable>
+            {coverImageUrl ? (
+              <Text variant="tiny" color={colors.mutedText}>
+                Uploaded ✅
+              </Text>
+            ) : null}
+          </View>
+
+          <View style={styles.sectionSpacing}>
+            <Text variant="small" weight="600" style={styles.sectionLabel}>
+              Pricing
+            </Text>
+            <View style={styles.segmentedRow}>
+              {(['FREE', 'ONCE_OFF', 'SUBSCRIPTION'] as PriceType[]).map((option) => {
+                const active = priceType === option;
+                return (
+                  <Pressable
+                    key={option}
+                    style={[styles.segmentedButton, active && styles.segmentedButtonActive]}
+                    onPress={() => setPriceType(option)}
+                  >
+                    <Text variant="small" weight="600" color={active ? colors.textDark : colors.mutedText}>
+                      {option === 'FREE' ? 'Free' : option === 'ONCE_OFF' ? 'One-time' : 'Subscription'}
                     </Text>
                   </Pressable>
-                ))}
-              </View>
+                );
+              })}
             </View>
-          ) : null}
-
-          {step === 2 ? (
-            <View>
-              <Text variant="small" weight="600" style={styles.sectionLabel}>
-                Cover image
-              </Text>
-              <Pressable style={styles.coverButton} onPress={showImageOptions} disabled={uploadingCover}>
-                {uploadingCover ? (
-                  <ActivityIndicator color={colors.primary} />
-                ) : (
-                  <Text variant="small" weight="600">
-                    {coverImageUrl ? 'Replace cover image' : 'Upload cover image'}
-                  </Text>
-                )}
-              </Pressable>
-              {coverImageUrl ? (
-                <Text variant="tiny" color={colors.mutedText}>
-                  Uploaded ✅
-                </Text>
-              ) : null}
-              <View style={styles.toggleRow}>
-                <View>
-                  <Text variant="small" weight="600">
-                    Locked classroom
-                  </Text>
-                  <Text variant="tiny" color={colors.mutedText}>
-                    Require approval before joining.
-                  </Text>
-                </View>
-                <Switch value={isLocked} onValueChange={setIsLocked} />
-              </View>
-              <View style={styles.toggleRow}>
-                <View>
-                  <Text variant="small" weight="600">
-                    Always live demo
-                  </Text>
-                  <Text variant="tiny" color={colors.mutedText}>
-                    Make this classroom feel live.
-                  </Text>
-                </View>
-                <Switch value={isAlwaysLiveDemo} onValueChange={setIsAlwaysLiveDemo} />
-              </View>
-            </View>
-          ) : null}
-
-          {step === 3 ? (
-            <View>
-              <Text variant="small" weight="600" style={styles.sectionLabel}>
-                Schedule
-              </Text>
+            {priceType !== 'FREE' ? (
               <Input
-                label="Starts at"
-                placeholder="YYYY-MM-DD HH:mm"
-                value={startsAt}
-                onChangeText={setStartsAt}
-              />
-              <Input
-                label="Ends at"
-                placeholder="YYYY-MM-DD HH:mm"
-                value={endsAt}
-                onChangeText={setEndsAt}
-              />
-              <Text variant="small" weight="600" style={styles.sectionLabel}>
-                Frequency
-              </Text>
-              <View style={styles.frequencyRow}>
-                {FREQUENCY_OPTIONS.map((option) => {
-                  const active = frequency === option;
-                  return (
-                    <Pressable
-                      key={option}
-                      style={[styles.frequencyChip, active && styles.frequencyChipActive]}
-                      onPress={() => setFrequency(option)}
-                    >
-                      <Text variant="small" weight="600" color={active ? colors.textDark : colors.mutedText}>
-                        {option}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-              <Input
-                label="Max seats"
-                placeholder="e.g. 30"
+                label="Price"
+                placeholder="Enter amount"
                 keyboardType="number-pad"
-                value={maxSeats}
-                onChangeText={setMaxSeats}
+                value={price}
+                onChangeText={setPrice}
               />
-              <Input
-                label="Minimum age"
-                placeholder="e.g. 12"
-                keyboardType="number-pad"
-                value={minAge}
-                onChangeText={setMinAge}
-              />
-            </View>
-          ) : null}
-
-          {step === 4 ? (
-            <View>
-              <Text variant="small" weight="600" style={styles.sectionLabel}>
-                Pricing
-              </Text>
-              <View style={styles.segmentedRow}>
-                {(['free', 'paid'] as PriceType[]).map((option) => {
-                  const active = priceType === option;
-                  return (
-                    <Pressable
-                      key={option}
-                      style={[styles.segmentedButton, active && styles.segmentedButtonActive]}
-                      onPress={() => setPriceType(option)}
-                    >
-                      <Text variant="small" weight="600" color={active ? colors.textDark : colors.mutedText}>
-                        {option === 'free' ? 'Free' : 'Paid'}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-              {priceType === 'paid' ? (
-                <Input
-                  label="Price"
-                  placeholder="Enter amount"
-                  keyboardType="number-pad"
-                  value={price}
-                  onChangeText={setPrice}
-                />
-              ) : null}
+            ) : null}
+            {priceType === 'SUBSCRIPTION' ? (
               <Input
                 label="Subscription type (optional)"
-                placeholder="Monthly, yearly, one-time..."
+                placeholder="Monthly, yearly..."
                 value={subscriptionType}
                 onChangeText={setSubscriptionType}
               />
-              <View style={styles.reviewCard}>
-                <Text variant="small" weight="600">
-                  Review summary
+            ) : null}
+          </View>
+
+          <View style={styles.sectionSpacing}>
+            <Pressable style={styles.accordionHeader} onPress={() => setAdvancedOpen((prev) => !prev)}>
+              <Text variant="small" weight="600">
+                Advanced options
+              </Text>
+              <Text variant="small" color={colors.mutedText}>
+                {advancedOpen ? 'Hide' : 'Show'}
+              </Text>
+            </Pressable>
+            {advancedOpen ? (
+              <View style={styles.accordionBody}>
+                <Input
+                  label="Starts at"
+                  placeholder="YYYY-MM-DD HH:mm"
+                  value={startsAt}
+                  onChangeText={setStartsAt}
+                />
+                <Input label="Ends at" placeholder="YYYY-MM-DD HH:mm" value={endsAt} onChangeText={setEndsAt} />
+                <Text variant="small" weight="600" style={styles.sectionLabel}>
+                  Frequency
                 </Text>
-                <Text variant="tiny" color={colors.mutedText}>
-                  {title || 'Untitled classroom'} · {priceType === 'paid' ? `$${price || 0}` : 'Free'}
-                </Text>
-                {subject ? (
-                  <Text variant="tiny" color={colors.mutedText}>
-                    Subject: {subject}
-                  </Text>
-                ) : null}
-                {tags.length ? (
-                  <Text variant="tiny" color={colors.mutedText}>
-                    Tags: {tags.join(', ')}
-                  </Text>
-                ) : null}
+                <View style={styles.frequencyRow}>
+                  {FREQUENCY_OPTIONS.map((option) => {
+                    const active = frequency === option;
+                    return (
+                      <Pressable
+                        key={option}
+                        style={[styles.frequencyChip, active && styles.frequencyChipActive]}
+                        onPress={() => setFrequency(active ? '' : option)}
+                      >
+                        <Text variant="small" weight="600" color={active ? colors.textDark : colors.mutedText}>
+                          {option}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                <Input
+                  label="Max seats"
+                  placeholder="e.g. 30"
+                  keyboardType="number-pad"
+                  value={maxSeats}
+                  onChangeText={setMaxSeats}
+                />
               </View>
-            </View>
-          ) : null}
+            ) : null}
+          </View>
         </ScrollView>
 
         <View style={styles.footer}>
-          {step > 1 ? <Button title="Back" variant="secondary" onPress={() => setStep((prev) => prev - 1)} /> : null}
-          {step < totalSteps ? (
-            <Button title="Next" onPress={() => setStep((prev) => prev + 1)} disabled={!canProceed} />
-          ) : (
-            <Button title={submitting ? 'Creating...' : 'Create classroom'} onPress={handleSubmit} disabled={!canProceed} />
-          )}
+          <Button
+            title={submitting ? 'Creating...' : 'Create classroom'}
+            onPress={handleSubmit}
+            disabled={!canSubmit}
+          />
         </View>
       </KeyboardAvoidingView>
     </Screen>
@@ -422,13 +399,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
   backButton: {
     paddingHorizontal: spacing.md,
   },
-  stepLabel: {
-    marginBottom: spacing.lg,
+  sectionLabel: {
+    marginBottom: spacing.sm,
+  },
+  sectionSpacing: {
+    marginTop: spacing.lg,
   },
   tagRow: {
     flexDirection: 'row',
@@ -459,9 +439,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
     borderRadius: radius.md,
   },
-  sectionLabel: {
-    marginBottom: spacing.sm,
-  },
   coverButton: {
     backgroundColor: colors.card,
     borderRadius: radius.md,
@@ -470,14 +447,6 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     alignItems: 'center',
     marginBottom: spacing.sm,
-  },
-  toggleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
   frequencyRow: {
     flexDirection: 'row',
@@ -515,18 +484,20 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     borderColor: colors.primary,
   },
-  reviewCard: {
-    backgroundColor: colors.card,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-    gap: spacing.xs,
+  accordionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  accordionBody: {
+    paddingTop: spacing.md,
   },
   footer: {
     flexDirection: 'row',
-    gap: spacing.sm,
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     paddingVertical: spacing.md,
   },
 });

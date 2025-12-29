@@ -18,17 +18,33 @@ export interface Classroom {
   endsAt?: string | null;
   frequency?: string | null;
   status?: string | null;
-  priceType?: 'free' | 'paid' | string | null;
+  priceType?: 'FREE' | 'ONCE_OFF' | 'SUBSCRIPTION' | 'free' | 'paid' | string | null;
   price?: number | null;
   subscriptionType?: string | null;
   maxSeats?: number | null;
   minAge?: number | null;
   isLocked?: boolean;
   isAlwaysLiveDemo?: boolean;
+  canGoLive?: boolean;
+  canPublish?: boolean;
   shareUrl?: string | null;
   host?: ClassroomHost | null;
   isLiked?: boolean;
   isSaved?: boolean;
+}
+
+export interface CreateClassroomPayload {
+  title: string;
+  shortDescription?: string;
+  tags?: string[];
+  coverImageUrl?: string;
+  priceType: 'FREE' | 'ONCE_OFF' | 'SUBSCRIPTION';
+  price?: number;
+  subscriptionType?: string;
+  startsAt?: string;
+  endsAt?: string;
+  frequency?: string;
+  maxSeats?: number;
 }
 
 const unwrapData = (responseData: any) => responseData?.data ?? responseData;
@@ -47,6 +63,11 @@ const normalizeClassroom = (data: any): Classroom | null => {
   const id = data.id ?? data._id ?? data.classroomId ?? '';
   if (!id) return null;
 
+  const rawPriceType = data.priceType ?? data.accessType ?? null;
+  const normalizedPriceType =
+    typeof rawPriceType === 'string' ? rawPriceType.toUpperCase().replace('-', '_') : rawPriceType;
+  const allowedActions = Array.isArray(data.allowedActions) ? data.allowedActions : [];
+
   return {
     id,
     title: data.title ?? data.name ?? 'Untitled classroom',
@@ -59,13 +80,15 @@ const normalizeClassroom = (data: any): Classroom | null => {
     endsAt: data.endsAt ?? data.endTime ?? null,
     frequency: data.frequency ?? null,
     status: data.status ?? null,
-    priceType: data.priceType ?? data.accessType ?? null,
+    priceType: normalizedPriceType ?? null,
     price: typeof data.price === 'number' ? data.price : data.price ? Number(data.price) : null,
     subscriptionType: data.subscriptionType ?? null,
     maxSeats: data.maxSeats ?? data.capacity ?? null,
     minAge: data.minAge ?? null,
     isLocked: Boolean(data.isLocked ?? data.locked),
     isAlwaysLiveDemo: Boolean(data.isAlwaysLiveDemo ?? data.alwaysLive),
+    canGoLive: Boolean(data.canGoLive ?? data.can_go_live ?? allowedActions.includes('go-live')),
+    canPublish: Boolean(data.canPublish ?? data.can_publish ?? allowedActions.includes('publish')),
     shareUrl: data.shareUrl ?? null,
     host: normalizeHost(data.host ?? data.teacher ?? data.creator ?? data.owner ?? data.user),
     isLiked: Boolean(data.isLiked ?? data.liked),
@@ -96,7 +119,7 @@ export const classroomsService = {
     const data = unwrapData(response.data);
     return normalizeClassrooms(data?.items ?? data?.classrooms ?? data);
   },
-  async createClassroom(payload: Record<string, any>) {
+  async createClassroom(payload: CreateClassroomPayload) {
     const response = await api.post('/classrooms', payload);
     const data = unwrapData(response.data);
     return normalizeClassroom(data?.classroom ?? data);
@@ -124,6 +147,21 @@ export const classroomsService = {
     const response = await api.post(`/classrooms/${classroomId}/subscribe`);
     const data = unwrapData(response.data);
     return data;
+  },
+  async publishClassroom(classroomId: string) {
+    const response = await api.post(`/classrooms/${classroomId}/publish`);
+    const data = unwrapData(response.data);
+    return normalizeClassroom(data?.classroom ?? data);
+  },
+  async goLiveClassroom(classroomId: string) {
+    const response = await api.post(`/classrooms/${classroomId}/go-live`);
+    const data = unwrapData(response.data);
+    return normalizeClassroom(data?.classroom ?? data);
+  },
+  async endClassroom(classroomId: string) {
+    const response = await api.post(`/classrooms/${classroomId}/end`);
+    const data = unwrapData(response.data);
+    return normalizeClassroom(data?.classroom ?? data);
   },
   async uploadCover(file: { uri: string; name?: string; type?: string }) {
     const form = new FormData();
