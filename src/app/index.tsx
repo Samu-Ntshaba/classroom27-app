@@ -14,8 +14,6 @@ import { notificationService } from '../services/notification.service';
 import { useAuthStore } from '../store/auth.store';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
-import { DemoLiveCard } from '../features/live/DemoLiveCard';
-import { DEMO_CLASSROOM } from '../features/live/demoClassroom';
 
 const railSkeletons = Array.from({ length: 4 }).map((_, index) => ({ id: `rail-${index}` }));
 const listSkeletons = Array.from({ length: 4 }).map((_, index) => ({ id: `list-${index}` }));
